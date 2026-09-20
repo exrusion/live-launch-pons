@@ -8,6 +8,31 @@ function short(value: string) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
+function walletDetails(name: string) {
+  const normalized = name.toLowerCase();
+
+  if (normalized.includes("walletconnect")) {
+    return { title: "WalletConnect", detail: "Scan QR or open a mobile wallet" };
+  }
+  if (normalized.includes("metamask")) {
+    return { title: "MetaMask", detail: "Browser extension or mobile app" };
+  }
+  if (normalized.includes("trust")) {
+    return { title: "Trust Wallet", detail: "Browser extension or mobile app" };
+  }
+  if (normalized.includes("coinbase")) {
+    return { title: "Coinbase Wallet", detail: "Browser extension or mobile app" };
+  }
+  if (normalized.includes("rabby")) {
+    return { title: "Rabby Wallet", detail: "Browser extension" };
+  }
+
+  return {
+    title: normalized === "injected" ? "Browser wallet" : name,
+    detail: "Installed wallet",
+  };
+}
+
 export function WalletButton() {
   const { address, isConnected, chainId } = useAccount();
   const { connectors, connect, isPending } = useConnect();
@@ -18,7 +43,11 @@ export function WalletButton() {
   const [busy, setBusy] = useState(false);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
-  const hasWalletConnectConnector = connectors.some((connector) => connector.name.includes("WalletConnect"));
+  const availableConnectors = connectors.filter((connector, index, list) => {
+    const identity = `${connector.name}:${connector.id}`.toLowerCase();
+    return list.findIndex((candidate) => `${candidate.name}:${candidate.id}`.toLowerCase() === identity) === index;
+  });
+  const hasWalletConnectConnector = availableConnectors.some((connector) => connector.name.toLowerCase().includes("walletconnect"));
 
   async function verify() {
     if (!address) return;
@@ -61,13 +90,16 @@ export function WalletButton() {
       {open && <div className="wallet-popover">
         <strong>Choose a wallet</strong>
         <p className="muted-copy">{hasWalletConnectConnector
-          ? "Use an installed browser wallet, or scan with WalletConnect."
-          : "Use an installed browser wallet such as MetaMask or Trust Wallet."}</p>
-        {connectors.map((connector) => (
-          <button className="wallet-option" key={connector.uid} disabled={isPending} onClick={() => connect({ connector, chainId: robinhoodChain.id })}>
-            <span>{connector.name.includes("WalletConnect") ? "WalletConnect" : "Browser wallet"}</span><small>{connector.name.includes("WalletConnect") ? "Scan or deep link" : "MetaMask / Trust"}</small>
-          </button>
-        ))}
+          ? "Choose an installed wallet, or connect from your phone with WalletConnect."
+          : "Choose any compatible wallet installed in this browser."}</p>
+        {availableConnectors.map((connector) => {
+          const details = walletDetails(connector.name);
+          return (
+            <button className="wallet-option" key={connector.uid} disabled={isPending} onClick={() => connect({ connector, chainId: robinhoodChain.id })}>
+              <span>{details.title}</span><small>{details.detail}</small>
+            </button>
+          );
+        })}
       </div>}
     </div>
   );
