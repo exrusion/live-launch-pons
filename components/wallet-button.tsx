@@ -20,6 +20,7 @@ export function WalletButton() {
   const [busy, setBusy] = useState(false);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
+  const hasWalletConnectConnector = connectors.some((connector) => connector.name.includes("WalletConnect"));
 
   async function verify() {
     if (!address || !session) return;
@@ -62,7 +63,9 @@ export function WalletButton() {
       <button className="button button-quiet button-small" onClick={() => setOpen((value) => !value)}>Connect wallet</button>
       {open && <div className="wallet-popover">
         <strong>Choose a wallet</strong>
-        <p className="muted-copy">MetaMask, Trust Wallet, and WalletConnect-compatible wallets are supported.</p>
+        <p className="muted-copy">{hasWalletConnectConnector
+          ? "Use an installed browser wallet, or scan with WalletConnect."
+          : "Use an installed browser wallet such as MetaMask or Trust Wallet."}</p>
         {connectors.map((connector) => (
           <button className="wallet-option" key={connector.uid} disabled={isPending} onClick={() => connect({ connector, chainId: robinhoodChain.id })}>
             <span>{connector.name.includes("WalletConnect") ? "WalletConnect" : "Browser wallet"}</span><small>{connector.name.includes("WalletConnect") ? "Scan or deep link" : "MetaMask / Trust"}</small>

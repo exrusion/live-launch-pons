@@ -1,11 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseEther } from "viem";
+import { ZodError } from "zod";
 import { auth } from "@/lib/auth";
-import { createGameSchema, generateGameConfig, versionIdentity } from "@/lib/game-generator";
-import { hashIp, requestIp, requireSameOrigin, safeError, sha256, slugify } from "@/lib/security";
+import { createGameSchema, freezeGameVersion, generateGameConfig } from "@/lib/game-generator";
+import { previewInputHash, PreviewTokenConfigurationError, PreviewTokenError, verifyPreviewToken } from "@/lib/preview-token";
+import { hashIp, requestIp, requireSameOrigin, sha256, slugify } from "@/lib/security";
 import { transaction } from "@/lib/db";
 import { saveTokenImage } from "@/lib/assets";
 import { checkRateLimit } from "@/lib/rate-limit";
+
+const IMAGE_ERROR_MESSAGES: Record<string, string> = {
+  INVALID_IMAGE_DATA: "Use a valid PNG, JPEG, or WebP image.",
+  INVALID_IMAGE_SIZE: "Use a PNG, JPEG, or WebP image under 2 MB.",
+  UNSUPPORTED_IMAGE_TYPE: "Use a valid PNG, JPEG, or WebP image.",
+  IMAGE_MIME_MISMATCH: "The image contents do not match its declared type.",
+  IMAGE_DIMENSIONS_TOO_LARGE: "Use an image no larger than 4096×4096 pixels.",
+};
+
+function unexpectedFailureMetadata(error: unknown) {
+  const errorClass = error instanceof Error && /^[A-Za-z0-9_.-]{1,64}$/.test(error.constructor.name)
+    ? error.constructor.name
+    : "UnknownError";
+  const rawCode = error && typeof error === "object" && "code" in error ? (error as { code?: unknown }).code : undefined;
+  const code = typeof rawCode === "string" && /^[A-Za-z0-9_.-]{1,64}$/.test(rawCode) ? rawCode : "UNCLASSIFIED";
+  return { errorClass, code };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,13 +33,31 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) return NextResponse.json({ error: "Sign in with X first." }, { status: 401 });
     const rate = await checkRateLimit(`create:${session.user.id}:${hashIp(requestIp(request.headers))}`, 8, 60 * 60);
     if (!rate.allowed) return NextResponse.json({ error: "Creation limit reached. Try again later." }, { status: 429 });
-    const body = await request.json();
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    if (!rawBody || typeof rawBody !== "object" || Array.isArray(rawBody)) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    const body = rawBody as { input?: unknown; previewToken?: unknown; imageDataUrl?: unknown };
     const input = createGameSchema.parse(body.input);
-    if (!body.imageDataUrl || typeof body.imageDataUrl !== "string") return NextResponse.json({ error: "A PNG, JPEG, or WebP token image is required." }, { status: 400 });
+    if (typeof body.previewToken !== "string" || !body.previewToken) {
+      return NextResponse.json({ error: "Generate a fresh preview before saving." }, { status: 400 });
+    }
+    const imageDataUrl = body.imageDataUrl;
+    if (typeof imageDataUrl !== "string" || !imageDataUrl) return NextResponse.json({ error: "A PNG, JPEG, or WebP token image is required." }, { status: 400 });
     const config = generateGameConfig(input);
-    const identity = versionIdentity(config);
-    const developerBuyWei = parseEther(input.developerBuyEth || "0").toString();
-    const suffix = sha256(`${session.user.id}:${identity.deterministicId}:${Date.now()}`).slice(0, 6);
+    const frozen = freezeGameVersion(config);
+    verifyPreviewToken(body.previewToken, input, frozen);
+    const developerBuyEth = input.developerBuyEth || "0";
+    if (developerBuyEth.length > 32 || !/^\d+(?:\.\d{0,6})?$/.test(developerBuyEth)) {
+      return NextResponse.json({ error: "Enter a valid developer buy amount." }, { status: 400 });
+    }
+    const developerBuyWei = parseEther(developerBuyEth).toString();
+    const suffix = sha256(`${session.user.id}:${frozen.deterministicId}:${Date.now()}`).slice(0, 6);
     const slug = `${slugify(input.name) || "game"}-${suffix}`;
     const result = await transaction(async (client) => {
       const game = await client.query<{ id: string }>(
@@ -29,20 +66,20 @@ export async function POST(request: NextRequest) {
         [session.user!.id, slug, input.name, input.ticker, input.description, input.category, input.visualStyle, input.difficulty, input.prompt, input.websiteUrl || null, input.xUrl || null, developerBuyWei],
       );
       const gameId = game.rows[0].id;
-      const imageId = await saveTokenImage(client, { userId: session.user!.id, gameId, dataUrl: body.imageDataUrl });
+      const imageId = await saveTokenImage(client, { userId: session.user!.id, gameId, dataUrl: imageDataUrl });
       const job = await client.query<{ id: string }>(
         `INSERT INTO generation_jobs(user_id,game_id,status,progress,input_hash,output_hash,provider,model,attempts)
-         VALUES($1,$2,'SUCCEEDED',100,$3,$4,'deterministic-template','runtime-v1',1) RETURNING id`,
-        [session.user!.id, gameId, sha256(JSON.stringify(input)), identity.configHash],
+         VALUES($1,$2,'SUCCEEDED',100,$3,$4,'deterministic-template',$5,1) RETURNING id`,
+        [session.user!.id, gameId, previewInputHash(input), frozen.manifestHash, frozen.runtimeVersion],
       );
       await client.query(
         `INSERT INTO game_drafts(game_id,revision,prompt,config,generation_job_id) VALUES($1,1,$2,$3::jsonb,$4)`,
-        [gameId, input.prompt, identity.configJson, job.rows[0].id],
+        [gameId, input.prompt, frozen.configJson, job.rows[0].id],
       );
       const version = await client.query<{ id: string }>(
-        `INSERT INTO game_versions(game_id,version_number,deterministic_id,template_version,runtime_version,config,config_hash,manifest_hash,prompt,release_notes,status,created_by)
-         VALUES($1,1,$2,$3,'runtime-v1',$4::jsonb,$5,$6,$7,'Initial playable preview.','PREVIEW',$8) RETURNING id`,
-        [gameId, `${identity.deterministicId}-${suffix}`, `${input.category.toLowerCase()}-v1`, identity.configJson, identity.configHash, identity.manifestHash, input.prompt, session.user!.id],
+        `INSERT INTO game_versions(game_id,version_number,deterministic_id,template_version,runtime_version,config,config_hash,manifest_hash,document_html,prompt,release_notes,status,created_by)
+         VALUES($1,1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,'Initial playable preview.','PREVIEW',$10) RETURNING id`,
+        [gameId, `${frozen.deterministicId}-${suffix}`, frozen.templateVersion, frozen.runtimeVersion, frozen.configJson, frozen.configHash, frozen.manifestHash, frozen.documentHtml, input.prompt, session.user!.id],
       );
       await client.query("UPDATE games SET current_version_id=$1 WHERE id=$2", [version.rows[0].id, gameId]);
       await client.query(
@@ -54,6 +91,30 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: safeError(error) }, { status: 400 });
+    if (error instanceof PreviewTokenError) {
+      const message = error.code === "EXPIRED"
+        ? "This preview expired. Generate it again before saving."
+        : error.code === "MISMATCH"
+          ? "The game details changed after this preview. Generate a new preview before saving."
+          : "This preview could not be verified. Generate a fresh preview before saving.";
+      return NextResponse.json({ error: message }, { status: error.code === "MISMATCH" ? 409 : 400 });
+    }
+    if (error instanceof PreviewTokenConfigurationError) {
+      return NextResponse.json({ error: "Preview verification is temporarily unavailable." }, { status: 503 });
+    }
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Check the game details and try again." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "INVALID_ORIGIN") {
+      return NextResponse.json({ error: "Request origin not allowed." }, { status: 403 });
+    }
+    if (error instanceof Error && error.message.startsWith("Prompt rejected:")) {
+      return NextResponse.json({ error: "The game prompt could not be accepted." }, { status: 400 });
+    }
+    if (error instanceof Error && IMAGE_ERROR_MESSAGES[error.message]) {
+      return NextResponse.json({ error: IMAGE_ERROR_MESSAGES[error.message] }, { status: 400 });
+    }
+    console.error("game_create_failed", unexpectedFailureMetadata(error));
+    return NextResponse.json({ error: "Could not save the game right now. Try again." }, { status: 500 });
   }
 }

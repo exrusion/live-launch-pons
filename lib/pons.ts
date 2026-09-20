@@ -1,8 +1,10 @@
 import {
   createPublicClient,
   decodeEventLog,
+  decodeFunctionResult,
   decodeFunctionData,
   encodeFunctionData,
+  fallback,
   getAddress,
   http,
   isAddress,
@@ -11,9 +13,11 @@ import {
   type Address,
   type Hex,
 } from "viem";
-import { PONS_V2_FACTORY, robinhoodChain, ZERO_ADDRESS } from "@/lib/chain";
+import { PONS_V2_FACTORY, ROBINHOOD_PUBLIC_RPC_URL, robinhoodChain, ZERO_ADDRESS } from "@/lib/chain";
 import { PONS_FACTORY_ABI } from "@/lib/pons-abi";
 import { canonicalJson, safeError, sha256 } from "@/lib/security";
+
+const ROBINHOOD_DRPC_URL = "https://robinhood.drpc.org";
 
 export type PonsTokenParams = {
   name: string;
@@ -38,10 +42,82 @@ export type PonsLaunchConfig = {
   enabled: boolean;
 };
 
+function serverRpcUrls() {
+  const configured = process.env.ROBINHOOD_RPC_URL?.trim();
+  return [...new Set([configured, ROBINHOOD_DRPC_URL, ROBINHOOD_PUBLIC_RPC_URL].filter((url): url is string => Boolean(url)))];
+}
+
+/** Server-only transport: prefer the operator endpoint, then fail over publicly. */
+export function robinhoodServerTransport() {
+  return fallback(
+    serverRpcUrls().map((url) => http(url, { timeout: 5_000, retryCount: 0 })),
+    { rank: false, retryCount: 0 },
+  );
+}
+
 export const publicClient = createPublicClient({
   chain: robinhoodChain,
-  transport: http(robinhoodChain.rpcUrls.default.http[0], { timeout: 15_000, retryCount: 2 }),
+  transport: robinhoodServerTransport(),
 });
+
+type RpcReply = { id?: number; result?: unknown; error?: unknown };
+
+async function rpcProbe(url: string, timeoutMs: number) {
+  const launchEnabledData = encodeFunctionData({
+    abi: PONS_FACTORY_ABI,
+    functionName: "launchEnabled",
+  });
+  // One JSON-RPC batch avoids three separate TLS/proxy round trips and keeps
+  // the health route bounded even when a provider is slow.
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify([
+      { jsonrpc: "2.0", id: 1, method: "eth_chainId", params: [] },
+      { jsonrpc: "2.0", id: 2, method: "eth_getCode", params: [PONS_V2_FACTORY, "latest"] },
+      { jsonrpc: "2.0", id: 3, method: "eth_call", params: [{ to: PONS_V2_FACTORY, data: launchEnabledData }, "latest"] },
+    ]),
+    cache: "no-store",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error("RPC_HTTP_ERROR");
+  const payload = await response.json() as unknown;
+  if (!Array.isArray(payload)) throw new Error("RPC_BATCH_RESPONSE_ERROR");
+  const reply = (id: number) => {
+    const item = payload.find((candidate): candidate is RpcReply => Boolean(candidate) && typeof candidate === "object" && (candidate as RpcReply).id === id);
+    if (!item || item.error || item.result === undefined) throw new Error("RPC_RESPONSE_ERROR");
+    return item.result;
+  };
+  const chainId = reply(1);
+  const bytecode = reply(2);
+  const launchEnabledResult = reply(3);
+  const correctChain = chainId === "0x1237";
+  const hasFactory = typeof bytecode === "string" && bytecode !== "0x" && bytecode !== "0x0";
+  let launchEnabled = false;
+  if (correctChain && hasFactory && typeof launchEnabledResult === "string") {
+    launchEnabled = decodeFunctionResult({
+      abi: PONS_FACTORY_ABI,
+      functionName: "launchEnabled",
+      data: launchEnabledResult as Hex,
+    });
+  }
+  return { chainRpc: correctChain, ponsFactory: correctChain && hasFactory, ponsLaunchEnabled: launchEnabled };
+}
+
+/** A bounded probe used by health checks. Endpoint values never leave the server. */
+export async function probePonsInfrastructure(timeoutMs = 3_000) {
+  try {
+    // Return as soon as one independent provider proves the chain and factory;
+    // a slow fallback must not delay an otherwise healthy liveness request.
+    return await Promise.any(serverRpcUrls().map(async (url) => {
+      const probe = await rpcProbe(url, timeoutMs);
+      if (!probe.chainRpc || !probe.ponsFactory) throw new Error("RPC_PROBE_MISMATCH");
+      return probe;
+    }));
+  } catch {
+    return { chainRpc: false, ponsFactory: false, ponsLaunchEnabled: false };
+  }
+}
 
 export async function readPonsLaunchTerms(wallet: Address, pairToken: Address = ZERO_ADDRESS) {
   if (!isAddress(wallet)) throw new Error("INVALID_WALLET");

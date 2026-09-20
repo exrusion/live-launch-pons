@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { decodeFunctionData } from "viem";
-import { generateGameConfig, versionIdentity } from "@/lib/game-generator";
-import { buildGameDocument } from "@/lib/game-runtime";
+import { freezeGameVersion, generateGameConfig, versionIdentity } from "@/lib/game-generator";
+import { buildFrozenGameDocument, buildGameDocument, FROZEN_GAME_DOCUMENT_NONCE, FROZEN_GAME_DOCUMENT_VERSION } from "@/lib/game-runtime";
 import { buildPonsParams, launchCalldata } from "@/lib/pons";
 import { PONS_FACTORY_ABI } from "@/lib/pons-abi";
 import { validateReplay } from "@/lib/scores";
-import { moderateText } from "@/lib/security";
+import { moderateText, sha256 } from "@/lib/security";
 import { nextSponsorNonce, rebateRequiredBalance } from "@/lib/rebates";
 
 const input = {
@@ -45,6 +45,23 @@ test("sandbox document blocks network access and contains a playable runtime", (
   assert.match(html, /<canvas id="stage"/);
   assert.match(html, /pons-game/);
   assert.doesNotMatch(html, /<script[^>]*src=/);
+});
+
+test("frozen preview documents are deterministic and the manifest binds every byte", () => {
+  const config = generateGameConfig(input);
+  const first = freezeGameVersion(config);
+  const second = freezeGameVersion(config);
+  const rebuilt = buildFrozenGameDocument(config);
+
+  assert.equal(first.documentHtml, second.documentHtml);
+  assert.equal(first.documentHtml, rebuilt);
+  assert.equal(first.manifestHash, sha256(first.documentHtml));
+  assert.equal(versionIdentity(config).manifestHash, first.manifestHash);
+  assert.match(first.documentHtml, new RegExp(`nonce="${FROZEN_GAME_DOCUMENT_NONCE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`));
+  assert.match(first.documentHtml, new RegExp(`versionId:${JSON.stringify(FROZEN_GAME_DOCUMENT_VERSION)}`));
+
+  const runtimeMutation = `${first.documentHtml}\n<!-- runtime mutation -->`;
+  assert.notEqual(sha256(runtimeMutation), first.manifestHash);
 });
 
 test("replay validation accepts plausible runs and rejects impossible scores", () => {

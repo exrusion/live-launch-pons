@@ -1,14 +1,81 @@
 import { NextResponse } from "next/server";
-import { databaseReady } from "@/lib/db";
+import { databaseReady, serviceHeartbeatReady } from "@/lib/db";
+import { probePonsInfrastructure } from "@/lib/pons";
+import { hasSponsorRebateConfig } from "@/lib/rebates";
+import { hasRedis, redisReady, workerHeartbeatReady } from "@/lib/redis";
 
 export const dynamic = "force-dynamic";
 
+type InfrastructureProbe = Awaited<ReturnType<typeof probePonsInfrastructure>>;
+
+let infrastructureProbe: { checkedAt: number; value: InfrastructureProbe } = {
+  checkedAt: 0,
+  value: { chainRpc: false, ponsFactory: false, ponsLaunchEnabled: false },
+};
+let infrastructureProbeInFlight: Promise<InfrastructureProbe> | null = null;
+
+async function infrastructureReady() {
+  if (Date.now() - infrastructureProbe.checkedAt < 30_000) return infrastructureProbe.value;
+  if (!infrastructureProbeInFlight) {
+    infrastructureProbeInFlight = probePonsInfrastructure(8_000)
+      .then((value) => {
+        infrastructureProbe = { checkedAt: Date.now(), value };
+        return value;
+      })
+      .catch(() => {
+        const value = { chainRpc: false, ponsFactory: false, ponsLaunchEnabled: false };
+        infrastructureProbe = { checkedAt: Date.now(), value };
+        return value;
+      })
+      .finally(() => {
+        infrastructureProbeInFlight = null;
+      });
+  }
+  return infrastructureProbeInFlight;
+}
+
 export async function GET() {
-  const database = await databaseReady();
   const databaseConfigured = Boolean(process.env.DATABASE_URL);
-  const ok = process.env.NODE_ENV === "production" ? databaseConfigured && database : database || !databaseConfigured;
+  const redisConfigured = hasRedis();
+  const [database, redis, workerRedis, workerDatabase, infrastructure] = await Promise.all([
+    databaseReady(),
+    redisConfigured ? redisReady() : Promise.resolve(false),
+    redisConfigured ? workerHeartbeatReady() : Promise.resolve(null),
+    databaseConfigured ? serviceHeartbeatReady("worker") : Promise.resolve(false),
+    infrastructureReady(),
+  ]);
+  const worker = workerDatabase || workerRedis === true;
+  const live = process.env.NODE_ENV === "production" ? databaseConfigured && database : database || !databaseConfigured;
+  const ready = live && worker;
+  const ponsLaunchConfigured = process.env.PONS_LAUNCH_ENABLED === "true";
+  const sponsorRebateConfigured = hasSponsorRebateConfig();
+  const healthy = ready && infrastructure.chainRpc && infrastructure.ponsFactory &&
+    (!ponsLaunchConfigured || infrastructure.ponsLaunchEnabled) && (!redisConfigured || redis);
   return NextResponse.json(
-    { status: ok ? "ok" : "degraded", service: "pons-game-studio", database, databaseConfigured, chainId: 4663, time: new Date().toISOString() },
-    { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } },
+    {
+      status: healthy ? "ok" : "degraded",
+      service: "pons-game-studio",
+      live,
+      ready,
+      healthy,
+      database,
+      databaseConfigured,
+      redis: redisConfigured ? redis : null,
+      redisConfigured,
+      worker,
+      workerDatabase,
+      workerRedis,
+      xAuth: Boolean(process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET),
+      ponsLaunch: ponsLaunchConfigured,
+      freeLaunchRebate: sponsorRebateConfigured,
+      freeLaunchRebateEnabled: process.env.FREE_LAUNCH_REBATE_ENABLED === "true",
+      hasSponsorRebateConfig: sponsorRebateConfigured,
+      chainId: 4663,
+      chainRpc: infrastructure.chainRpc,
+      ponsFactory: infrastructure.ponsFactory,
+      ponsLaunchEnabled: infrastructure.ponsLaunchEnabled,
+      time: new Date().toISOString(),
+    },
+    { status: live ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
 }

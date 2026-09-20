@@ -43,7 +43,11 @@ export function requireSameOrigin(request: Request) {
 }
 
 export function safeError(error: unknown) {
-  if (error instanceof Error) return error.message.slice(0, 300);
+  if (error instanceof Error) {
+    const serverRpc = process.env.ROBINHOOD_RPC_URL?.trim();
+    const message = serverRpc ? error.message.replaceAll(serverRpc, "[redacted RPC]") : error.message;
+    return message.slice(0, 300);
+  }
   return "Unexpected error";
 }
 

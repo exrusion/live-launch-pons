@@ -1,7 +1,6 @@
 import {
   createWalletClient,
   getAddress,
-  http,
   isAddress,
   keccak256,
   type Address,
@@ -10,7 +9,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import type { PoolClient } from "pg";
 import { robinhoodChain } from "@/lib/chain";
-import { publicClient } from "@/lib/pons";
+import { publicClient, robinhoodServerTransport } from "@/lib/pons";
 import { query, transaction } from "@/lib/db";
 import { safeError } from "@/lib/security";
 import type { RebateStatus } from "@/lib/types";
@@ -104,7 +103,7 @@ function sponsorWallet() {
     client: createWalletClient({
       account,
       chain: robinhoodChain,
-      transport: http(robinhoodChain.rpcUrls.default.http[0], { timeout: 15_000, retryCount: 2 }),
+      transport: robinhoodServerTransport(),
     }),
   };
 }

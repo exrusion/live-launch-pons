@@ -12,6 +12,9 @@ const baseOptions: RedisOptions = {
   retryStrategy: (attempt) => Math.min(attempt * 250, 2_000),
 };
 
+export const WORKER_HEARTBEAT_KEY = "pons-game-studio:worker:heartbeat";
+const WORKER_HEARTBEAT_TTL_SECONDS = 45;
+
 export function hasRedis() {
   return Boolean(process.env.REDIS_URL);
 }
@@ -43,4 +46,43 @@ export function createWorkerRedis() {
     }),
     "worker",
   );
+}
+
+export async function redisReady() {
+  const client = redis();
+  if (!client) return false;
+  try {
+    return (await client.ping()) === "PONG";
+  } catch {
+    return false;
+  }
+}
+
+export async function recordWorkerHeartbeat(workerId: string) {
+  const client = redis();
+  if (!client) return false;
+  try {
+    await client.set(
+      WORKER_HEARTBEAT_KEY,
+      JSON.stringify({ workerId, at: Date.now() }),
+      "EX",
+      WORKER_HEARTBEAT_TTL_SECONDS,
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function workerHeartbeatReady() {
+  const client = redis();
+  if (!client) return null;
+  try {
+    const raw = await client.get(WORKER_HEARTBEAT_KEY);
+    if (!raw) return false;
+    const heartbeat = JSON.parse(raw) as { at?: unknown };
+    return typeof heartbeat.at === "number" && Date.now() - heartbeat.at < WORKER_HEARTBEAT_TTL_SECONDS * 1_000;
+  } catch {
+    return false;
+  }
 }

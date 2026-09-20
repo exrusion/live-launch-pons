@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { CreateGameInput, GameConfig } from "@/lib/types";
+import { buildFrozenGameDocument, GAME_RUNTIME_VERSION, gameTemplateVersion } from "@/lib/game-runtime";
 import { canonicalJson, moderateText, sha256 } from "@/lib/security";
 
 export const createGameSchema = z.object({
@@ -10,7 +11,7 @@ export const createGameSchema = z.object({
   category: z.enum(["RUNNER", "FLAPPY", "SHOOTER"]),
   visualStyle: z.string().trim().min(2).max(48),
   difficulty: z.enum(["EASY", "NORMAL", "HARD"]),
-  developerBuyEth: z.string().trim().regex(/^\d*(\.\d{0,6})?$/).optional().default("0"),
+  developerBuyEth: z.string().trim().max(32).regex(/^\d+(?:\.\d{0,6})?$/).optional().default("0"),
   xUrl: z.string().url().max(200).optional().or(z.literal("")),
   websiteUrl: z.string().url().max(200).optional().or(z.literal("")),
 });
@@ -77,14 +78,23 @@ export function generateGameConfig(input: CreateGameInput): GameConfig {
   };
 }
 
-export function versionIdentity(config: GameConfig) {
+export function freezeGameVersion(config: GameConfig) {
   const configJson = canonicalJson(config);
   const configHash = sha256(configJson);
-  const manifestHash = sha256(`runtime-v1:template-${config.category.toLowerCase()}-v1:${configHash}`);
+  const documentHtml = buildFrozenGameDocument(config);
+  const manifestHash = sha256(documentHtml);
   return {
     configJson,
     configHash,
     manifestHash,
-    deterministicId: `v1-${manifestHash.slice(0, 24)}`,
+    deterministicId: `v2-${manifestHash.slice(0, 24)}`,
+    templateVersion: gameTemplateVersion(config),
+    runtimeVersion: GAME_RUNTIME_VERSION,
+    documentHtml,
   };
+}
+
+export function versionIdentity(config: GameConfig) {
+  const { documentHtml: _, ...identity } = freezeGameVersion(config);
+  return identity;
 }

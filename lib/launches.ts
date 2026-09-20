@@ -1,4 +1,5 @@
 import { getAddress, isHash, type Address, type Hex } from "viem";
+import type { PoolClient } from "pg";
 import { query, transaction } from "@/lib/db";
 import { explorerTokenUrl, ponsTradingUrl, type PonsTokenParams, verifyPonsLaunch } from "@/lib/pons";
 import { safeError } from "@/lib/security";
@@ -41,9 +42,27 @@ async function internalLaunchById(id: string) {
   return result.rows[0] || null;
 }
 
+/**
+ * A terminal launch must not strand its game in LAUNCHING. The status guard,
+ * token check, and active-launch check make this safe against a concurrent
+ * confirmation and ensure a LIVE game is never downgraded.
+ */
+export async function restoreGameAfterTerminalLaunch(client: PoolClient, gameId: string) {
+  await client.query(
+    `UPDATE games g SET status='DRAFT',updated_at=now()
+     WHERE g.id=$1 AND g.status='LAUNCHING'
+       AND NOT EXISTS (SELECT 1 FROM tokens t WHERE t.game_id=g.id)
+       AND NOT EXISTS (
+         SELECT 1 FROM pons_launches p
+         WHERE p.game_id=g.id AND p.status IN ('SUBMITTED','CONFIRMING','CONFIRMED')
+       )`,
+    [gameId],
+  );
+}
+
 export async function markLaunchFailed(id: string, code: string, detail: string) {
   await transaction(async (client) => {
-    const locked = await client.query<{ free_credit_id: string | null; status: string }>("SELECT free_credit_id,status FROM pons_launches WHERE id=$1 FOR UPDATE", [id]);
+    const locked = await client.query<{ free_credit_id: string | null; game_id: string; status: string }>("SELECT free_credit_id,game_id,status FROM pons_launches WHERE id=$1 FOR UPDATE", [id]);
     const row = locked.rows[0];
     if (!row || row.status === "CONFIRMED") return;
     await client.query("UPDATE pons_launches SET status='FAILED',rebate_reserved_wei=0,error_code=$2,error_detail=$3,updated_at=now() WHERE id=$1", [id, code, detail.slice(0, 500)]);
@@ -54,6 +73,7 @@ export async function markLaunchFailed(id: string, code: string, detail: string)
         [row.free_credit_id],
       );
     }
+    await restoreGameAfterTerminalLaunch(client, row.game_id);
   });
 }
 

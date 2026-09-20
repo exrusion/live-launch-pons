@@ -3,6 +3,10 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import pg from "pg";
 
+if (process.env.NODE_ENV !== "production") {
+  try { process.loadEnvFile(".env.local"); } catch (error) { if (error?.code !== "ENOENT") throw error; }
+}
+
 const { Pool } = pg;
 if (!process.env.DATABASE_URL) {
   console.log("DATABASE_URL is not set; skipping migrations.");

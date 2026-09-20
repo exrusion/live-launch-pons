@@ -63,10 +63,10 @@ export async function gameByPublicId(publicId: string, viewerUserId?: string) {
 }
 
 export async function gameVersion(versionId: string, viewerUserId?: string) {
-  if (versionId === "demo" && !hasDatabase()) return { id: "demo", config: demoConfig, game_id: "demo" };
+  if (versionId === "demo" && !hasDatabase()) return { id: "demo", config: demoConfig, game_id: "demo", document_html: null };
   if (!hasDatabase()) return null;
-  const result = await query<{ id: string; game_id: string; config: GameConfig }>(
-    `SELECT v.id,v.game_id,v.config FROM game_versions v JOIN games g ON g.id=v.game_id
+  const result = await query<{ id: string; game_id: string; config: GameConfig; document_html: string | null }>(
+    `SELECT v.id,v.game_id,v.config,v.document_html FROM game_versions v JOIN games g ON g.id=v.game_id
      WHERE (v.id::text=$1 OR v.deterministic_id=$1)
        AND ((v.status='PUBLISHED' AND g.status IN ('LIVE','DEMO')) OR g.owner_user_id=$2::uuid)
      LIMIT 1`,

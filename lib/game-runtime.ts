@@ -1,12 +1,31 @@
 import type { GameConfig } from "@/lib/types";
 
+export const GAME_RUNTIME_VERSION = "runtime-v2";
+export const FROZEN_GAME_DOCUMENT_VERSION = "pons-frozen-runtime-v2";
+export const FROZEN_GAME_DOCUMENT_NONCE = "cG9ucy1mcm96ZW4tcnVudGltZS12Mg==";
+
+/**
+ * Frozen game documents deliberately use a stable nonce and document identity.
+ * The generated HTML is an immutable artifact, so the nonce does not need to
+ * vary per request. Keeping it stable lets preview, storage, and embed delivery
+ * use the exact same bytes. Run scoring is bound to the server-side game version
+ * through run_sessions; it never trusts the document's postMessage versionId.
+ */
+export function gameDocumentContentSecurityPolicy(nonce = FROZEN_GAME_DOCUMENT_NONCE) {
+  return `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'none'; img-src data:; media-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'`;
+}
+
+export function gameTemplateVersion(config: GameConfig) {
+  return `${config.category.toLowerCase()}-v2`;
+}
+
 function safeJson(value: unknown) {
   return JSON.stringify(value).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
 }
 
 export function buildGameDocument(config: GameConfig, options?: { nonce?: string; versionId?: string }) {
-  const nonce = options?.nonce || "pons-preview";
-  const versionId = options?.versionId || "preview";
+  const nonce = options?.nonce || FROZEN_GAME_DOCUMENT_NONCE;
+  const versionId = options?.versionId || FROZEN_GAME_DOCUMENT_VERSION;
   const runtime = String.raw`
 (() => {
   "use strict";
@@ -99,7 +118,14 @@ export function buildGameDocument(config: GameConfig, options?: { nonce?: string
   init();bg(0);label(cfg.title,W/2,220,44,"center");label(cfg.story,W/2,260,17,"center");send("ready",{category:cfg.category});
 })();`;
 
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'none'; img-src data:; media-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *"><title>${config.title.replace(/[<>]/g, "")}</title><style nonce="${nonce}">
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="pons-game-document" content="${FROZEN_GAME_DOCUMENT_VERSION}"><meta http-equiv="Content-Security-Policy" content="${gameDocumentContentSecurityPolicy(nonce)}"><title>${config.title.replace(/[<>]/g, "")}</title><style nonce="${nonce}">
   *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:${config.palette.background};color:${config.palette.text};font-family:Inter,ui-sans-serif,system-ui,sans-serif}body{display:grid;grid-template-rows:auto 1fr}.bar{height:54px;padding:0 14px;display:flex;align-items:center;gap:8px;background:rgba(3,8,6,.9);border-bottom:1px solid rgba(255,255,255,.08)}.brand{font-weight:850;margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.score{font-variant-numeric:tabular-nums;font-weight:900;color:${config.palette.primary};min-width:48px;text-align:right}.status{font-size:12px;opacity:.62}.controls{display:flex;gap:6px}.controls button{border:0;border-radius:999px;background:rgba(255,255,255,.09);color:inherit;padding:8px 11px;font:700 12px inherit;cursor:pointer}.wrap{position:relative;min-height:0}.wrap canvas{display:block;width:100%;height:100%;touch-action:none}.overlay{position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:30px;background:linear-gradient(180deg,rgba(4,10,7,.24),rgba(4,10,7,.8));cursor:pointer}.overlay[hidden]{display:none}.overlay h1{margin:0 0 8px;font-size:clamp(28px,6vw,58px);letter-spacing:-.05em}.overlay p{margin:0 auto;max-width:620px;line-height:1.5;opacity:.78}.play{display:inline-flex;margin:22px auto 0;padding:13px 20px;border-radius:999px;background:${config.palette.primary};color:${config.palette.background};font-weight:900}.hint{position:absolute;left:16px;bottom:14px;font-size:12px;opacity:.58}@media(max-width:700px){.bar{height:50px;padding:0 9px}.controls button{padding:7px 8px}.status{display:none}.hint{font-size:11px}.brand{max-width:120px}}@media(max-width:420px){.brand{display:none}.controls{gap:3px;margin-left:auto}.controls button{padding:7px 6px;font-size:10px}.score{min-width:32px}.hint{display:none}}
   </style></head><body><div class="bar"><div class="brand">${config.title.replace(/[<>]/g, "")}</div><div id="status" class="status">Ready</div><div id="score" class="score">0</div><div class="controls"><button id="pause" aria-label="Pause game">Pause</button><button id="restart" aria-label="Restart game">Restart</button><button id="mute" aria-label="Mute game">Sound on</button><button id="full" aria-label="Fullscreen game">Full</button></div></div><div class="wrap"><canvas id="stage" width="960" height="540" aria-label="Playable ${config.category.toLowerCase()} game"></canvas><div id="overlay" class="overlay"><div><h1 id="overlay-title">${config.title.replace(/[<>]/g, "")}</h1><p id="overlay-copy">${config.instructions.replace(/[<>]/g, "")}</p><span class="play">Play now</span></div></div><div class="hint">${config.instructions.replace(/[<>]/g, "")}</div></div><script id="game-config" type="application/json">${safeJson(config)}</script><script nonce="${nonce}">${runtime}</script></body></html>`;
+}
+
+export function buildFrozenGameDocument(config: GameConfig) {
+  return buildGameDocument(config, {
+    nonce: FROZEN_GAME_DOCUMENT_NONCE,
+    versionId: FROZEN_GAME_DOCUMENT_VERSION,
+  });
 }

@@ -1,11 +1,15 @@
 import { defineChain } from "viem";
 
+export const ROBINHOOD_PUBLIC_RPC_URL = "https://rpc.mainnet.chain.robinhood.com";
+
 export const robinhoodChain = defineChain({
   id: 4663,
   name: "Robinhood Chain",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: {
-    default: { http: [process.env.NEXT_PUBLIC_ROBINHOOD_RPC_URL || "https://rpc.mainnet.chain.robinhood.com"] },
+    // This shared definition is bundled for the browser. Server workloads use
+    // ROBINHOOD_RPC_URL through lib/pons.ts and never expose that endpoint.
+    default: { http: [process.env.NEXT_PUBLIC_ROBINHOOD_RPC_URL || ROBINHOOD_PUBLIC_RPC_URL] },
   },
   blockExplorers: {
     default: { name: "Robinhood Chain Explorer", url: "https://robinhoodchain.blockscout.com" },

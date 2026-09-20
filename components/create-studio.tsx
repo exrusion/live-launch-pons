@@ -1,10 +1,17 @@
 "use client";
 
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { buildGameDocument } from "@/lib/game-runtime";
 import type { CreateGameInput, GameConfig } from "@/lib/types";
+import {
+  clearCreateDraft,
+  forgetTabDraftId,
+  getOrCreateTabDraftId,
+  persistCreateDraft,
+  restoreCreateDraft,
+  type CreateDraftPayload,
+} from "@/lib/create-draft-storage";
 import { GameFrame } from "@/components/game-frame";
 
 const categories = [
@@ -13,44 +20,210 @@ const categories = [
   { value: "SHOOTER", title: "Top-down shooter", copy: "Move, aim, and survive." },
 ] as const;
 
-export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?: string; cspNonce: string }) {
+export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; cspNonce: string }) {
   const router = useRouter();
   const { status } = useSession();
   const [input, setInput] = useState<CreateGameInput>({ name: "", ticker: "", description: "", prompt: initialPrompt, category: "RUNNER", visualStyle: "Neon arcade", difficulty: "NORMAL", developerBuyEth: "0", xUrl: "", websiteUrl: "" });
   const [imageDataUrl, setImageDataUrl] = useState("");
+  const [imageReading, setImageReading] = useState(false);
   const [config, setConfig] = useState<GameConfig | null>(null);
+  const [previewToken, setPreviewToken] = useState("");
+  const [previewHtml, setPreviewHtml] = useState("");
   const [busy, setBusy] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [restoreNotice, setRestoreNotice] = useState("");
   const [step, setStep] = useState(1);
-  const previewHtml = useMemo(() => config ? buildGameDocument(config, { nonce: cspNonce, versionId: "preview" }) : "", [config, cspNonce]);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+  const draftClearedRef = useRef(false);
+  const draftIdRef = useRef<string | null>(null);
+  const draftInteractionRef = useRef(false);
+  const storageQueueRef = useRef<Promise<unknown>>(Promise.resolve());
+  const autoSaveTimerRef = useRef<number | null>(null);
+  const generationRevisionRef = useRef(0);
+  const imageReaderRef = useRef<FileReader | null>(null);
+  const imageReadRevisionRef = useRef(0);
 
-  function update<K extends keyof CreateGameInput>(key: K, value: CreateGameInput[K]) { setInput((current) => ({ ...current, [key]: value })); }
+  function draftPayload(): CreateDraftPayload {
+    return { input, imageDataUrl, config, previewToken, previewHtml, step };
+  }
+
+  function enqueueStorageOperation<T>(operation: () => Promise<T>): Promise<T> {
+    const queued = storageQueueRef.current.catch(() => undefined).then(operation);
+    storageQueueRef.current = queued.then(() => undefined, () => undefined);
+    return queued;
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    const draftId = getOrCreateTabDraftId();
+    draftIdRef.current = draftId;
+    const restore = async () => {
+      try {
+        const draft = draftId ? await restoreCreateDraft(draftId) : null;
+        if (cancelled || !draft || draftInteractionRef.current) return;
+        setInput({ developerBuyEth: "0", xUrl: "", websiteUrl: "", ...draft.input });
+        setImageDataUrl(draft.imageDataUrl);
+        setConfig(draft.config);
+        setPreviewToken(draft.previewToken);
+        setPreviewHtml(draft.previewHtml);
+        setStep(Math.min(3, Math.max(1, Math.trunc(draft.step))));
+        setRestoreNotice("Restored your saved game draft. You can continue where you left off.");
+      } finally {
+        if (!cancelled) setDraftHydrated(true);
+      }
+    };
+    void restore();
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!draftHydrated || draftClearedRef.current || !draftIdRef.current) return;
+    const draftId = draftIdRef.current;
+    const hasDraftContent = Boolean(
+      input.name || input.ticker || input.description || input.prompt || input.xUrl || input.websiteUrl
+      || input.category !== "RUNNER" || input.visualStyle !== "Neon arcade" || input.difficulty !== "NORMAL"
+      || (input.developerBuyEth && input.developerBuyEth !== "0")
+      || imageDataUrl || config || previewToken || previewHtml || step > 1,
+    );
+    const snapshot = draftPayload();
+    const timer = window.setTimeout(() => {
+      autoSaveTimerRef.current = null;
+      if (draftClearedRef.current) return;
+      if (hasDraftContent) void enqueueStorageOperation(() => persistCreateDraft(draftId, snapshot));
+      else void enqueueStorageOperation(() => clearCreateDraft(draftId));
+    }, 150);
+    autoSaveTimerRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      if (autoSaveTimerRef.current === timer) autoSaveTimerRef.current = null;
+    };
+  }, [config, draftHydrated, imageDataUrl, input, previewHtml, previewToken, step]);
+
+  useEffect(() => () => {
+    imageReadRevisionRef.current += 1;
+    imageReaderRef.current?.abort();
+  }, []);
+
+  function invalidatePreview() {
+    generationRevisionRef.current += 1;
+    setConfig(null);
+    setPreviewToken("");
+    setPreviewHtml("");
+    setNotice("");
+  }
+
+  function update<K extends keyof CreateGameInput>(key: K, value: CreateGameInput[K]) {
+    if (input[key] === value) return;
+    draftInteractionRef.current = true;
+    setInput((current) => ({ ...current, [key]: value }));
+    invalidatePreview();
+  }
+
+  function goToStep(nextStep: number) {
+    draftInteractionRef.current = true;
+    setStep(nextStep);
+  }
+
   function chooseImage(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (![/image\/png/, /image\/jpeg/, /image\/webp/].some((pattern) => pattern.test(file.type)) || file.size > 2 * 1024 * 1024) { setError("Use a PNG, JPEG, or WebP image under 2 MB."); return; }
-    const reader = new FileReader(); reader.onload = () => setImageDataUrl(String(reader.result)); reader.readAsDataURL(file);
+    const imageReadRevision = imageReadRevisionRef.current + 1;
+    imageReadRevisionRef.current = imageReadRevision;
+    imageReaderRef.current?.abort();
+    imageReaderRef.current = null;
+    setImageReading(false);
+    if (![/image\/png/, /image\/jpeg/, /image\/webp/].some((pattern) => pattern.test(file.type)) || file.size > 2 * 1024 * 1024) {
+      setError("Use a PNG, JPEG, or WebP image under 2 MB.");
+      event.currentTarget.value = "";
+      return;
+    }
+    draftInteractionRef.current = true;
+    invalidatePreview();
+    setImageReading(true);
+    const reader = new FileReader();
+    imageReaderRef.current = reader;
+    reader.onload = () => {
+      if (imageReadRevision !== imageReadRevisionRef.current) return;
+      setImageDataUrl(String(reader.result));
+      setError("");
+      setImageReading(false);
+      imageReaderRef.current = null;
+    };
+    reader.onerror = () => {
+      if (imageReadRevision !== imageReadRevisionRef.current) return;
+      setError("Could not read that image. Choose another file.");
+      setImageReading(false);
+      imageReaderRef.current = null;
+    };
+    reader.onabort = () => {
+      if (imageReadRevision !== imageReadRevisionRef.current) return;
+      setImageReading(false);
+      imageReaderRef.current = null;
+    };
+    reader.readAsDataURL(file);
   }
+
   async function generate() {
+    if (imageReading) { setError("Wait for the token image to finish processing."); return; }
+    const generationRevision = generationRevisionRef.current + 1;
+    generationRevisionRef.current = generationRevision;
     setBusy(true); setError(""); setNotice("");
     try {
       const response = await fetch("/api/generate/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(input) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Generation failed");
-      setConfig(body.config); setStep(3); setNotice("Playable preview ready. Test it before saving.");
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Generation failed"); }
+      if (!body.previewToken || typeof body.previewToken !== "string") throw new Error("Preview verification failed. Generate it again.");
+      if (!body.previewHtml || typeof body.previewHtml !== "string") throw new Error("Playable preview output was missing. Generate it again.");
+      if (!body.config || typeof body.config !== "object") throw new Error("Game configuration was missing. Generate it again.");
+      if (generationRevision !== generationRevisionRef.current) return;
+      setConfig(body.config); setPreviewToken(body.previewToken); setPreviewHtml(body.previewHtml); setStep(3); setNotice("Playable preview ready. Test it before saving.");
+    } catch (cause) { if (generationRevision === generationRevisionRef.current) setError(cause instanceof Error ? cause.message : "Generation failed"); }
     finally { setBusy(false); }
   }
+
   async function saveDraft() {
-    if (status !== "authenticated") { await signIn("twitter", { callbackUrl: "/create" }); return; }
-    if (!config) return;
+    if (status === "loading" || authBusy) return;
+    if (imageReading) { setError("Wait for the token image to finish processing."); return; }
+    if (!config || !previewToken || !previewHtml) { setError("Generate a fresh playable preview before saving."); setStep(2); return; }
+    if (status !== "authenticated") {
+      const draftId = draftIdRef.current || getOrCreateTabDraftId();
+      if (!draftId) {
+        setError("Browser session storage is required to preserve this draft during X sign-in.");
+        return;
+      }
+      draftIdRef.current = draftId;
+      if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current);
+      setAuthBusy(true); setError("");
+      try {
+        const committed = await enqueueStorageOperation(() => persistCreateDraft(draftId, draftPayload()));
+        if (!committed.indexedDb && !committed.localStorage) {
+          setError("Your draft could not be preserved for sign-in. Free some browser storage and try again.");
+          return;
+        }
+        await signIn("twitter", { callbackUrl: "/create" });
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Could not open X sign-in.");
+      } finally {
+        setAuthBusy(false);
+      }
+      return;
+    }
     if (!imageDataUrl) { setError("Add a token image before saving the launch draft."); setStep(1); return; }
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/games", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input, imageDataUrl }) });
+      const response = await fetch("/api/games", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input, imageDataUrl, previewToken }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not save draft");
+      draftClearedRef.current = true;
+      if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current);
+      const draftId = draftIdRef.current;
+      if (draftId) {
+        await enqueueStorageOperation(() => clearCreateDraft(draftId));
+        forgetTabDraftId(draftId);
+        draftIdRef.current = null;
+      }
       router.push(`/studio/${body.gameId}`);
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save draft"); }
     finally { setBusy(false); }
@@ -59,30 +232,31 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
   return <div className="creator-layout">
     <aside className="creator-steps">
       <div className="eyebrow">New game</div><h1>Build the first playable version.</h1>
-      {[{ n: 1, t: "Token details" }, { n: 2, t: "Game direction" }, { n: 3, t: "Preview & save" }].map((item) => <button key={item.n} className={step === item.n ? "step active" : step > item.n ? "step complete" : "step"} onClick={() => setStep(item.n)}><span>{step > item.n ? "✓" : item.n}</span>{item.t}</button>)}
+      {[{ n: 1, t: "Token details" }, { n: 2, t: "Game direction" }, { n: 3, t: "Preview & save" }].map((item) => <button key={item.n} className={step === item.n ? "step active" : step > item.n ? "step complete" : "step"} aria-current={step === item.n ? "step" : undefined} onClick={() => goToStep(item.n)}><span>{step > item.n ? "✓" : item.n}</span>{item.t}</button>)}
       <div className="security-note"><span>Isolated build</span><p>Your prompt becomes validated configuration, never unrestricted code.</p></div>
     </aside>
     <section className="creator-workspace">
+      {restoreNotice && <p className="success-copy" role="status" aria-live="polite">{restoreNotice}</p>}
       {step === 1 && <section className="form-section"><div className="section-heading"><div><span>01</span><h2>Token details</h2></div><p>These fields are frozen into the launch metadata.</p></div>
         <div className="field-grid"><label><span>Game name</span><input value={input.name} onChange={(e) => update("name", e.target.value)} placeholder="Neon Burrow" maxLength={48} /></label><label><span>Token ticker</span><div className="prefixed-input"><b>$</b><input value={input.ticker} onChange={(e) => update("ticker", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} placeholder="BURROW" maxLength={10} /></div></label></div>
         <label><span>Token description</span><textarea value={input.description} onChange={(e) => update("description", e.target.value)} placeholder="A one-line reason to play and follow the project." maxLength={280} /><small>{input.description.length}/280</small></label>
-        <div className="upload-row"><label className="image-upload"><input type="file" accept="image/png,image/jpeg,image/webp" onChange={chooseImage} />{imageDataUrl ? <img src={imageDataUrl} alt="Token preview" /> : <span>＋<b>Add token image</b><small>PNG, JPEG or WebP · 2 MB</small></span>}</label><div className="upload-copy"><h3>Permanent token artwork</h3><p>The approved file is hash-addressed and served immutably after launch.</p></div></div>
+        <div className="upload-row"><label className="image-upload" aria-busy={imageReading}><input type="file" accept="image/png,image/jpeg,image/webp" onChange={chooseImage} />{imageDataUrl ? <img src={imageDataUrl} alt="Token preview" /> : <span>＋<b>Add token image</b><small>PNG, JPEG or WebP · 2 MB</small></span>}</label><div className="upload-copy"><h3>Permanent token artwork</h3><p>{imageReading ? <span role="status">Processing the selected image…</span> : "The approved file is hash-addressed and served immutably after launch."}</p></div></div>
         <div className="field-grid"><label><span>X link <em>optional</em></span><input value={input.xUrl} onChange={(e) => update("xUrl", e.target.value)} placeholder="https://x.com/yourgame" /></label><label><span>Website <em>optional</em></span><input value={input.websiteUrl} onChange={(e) => update("websiteUrl", e.target.value)} placeholder="https://yourgame.xyz" /></label></div>
-        <div className="form-footer"><span>Drafts stay private until an on-chain launch confirms.</span><button className="button button-primary" onClick={() => setStep(2)}>Game direction →</button></div>
+        <div className="form-footer"><span>Drafts stay private until an on-chain launch confirms.</span><button className="button button-primary" onClick={() => goToStep(2)}>Game direction →</button></div>
       </section>}
       {step === 2 && <section className="form-section"><div className="section-heading"><div><span>02</span><h2>Describe the game</h2></div><p>Choose a safe engine, then shape its world.</p></div>
         <label><span>One-prompt game description</span><textarea className="prompt-textarea" value={input.prompt} onChange={(e) => update("prompt", e.target.value)} placeholder="A cyber mouse runs through a collapsing laboratory, collects neurons and avoids security drones." maxLength={900} /><small>{input.prompt.length}/900</small></label>
-        <div className="choice-label">Game engine</div><div className="category-grid">{categories.map((category) => <button key={category.value} className={input.category === category.value ? "category-card selected" : "category-card"} onClick={() => update("category", category.value)}><span className={`category-icon icon-${category.value.toLowerCase()}`} /><b>{category.title}</b><small>{category.copy}</small></button>)}</div>
+        <div className="choice-label">Game engine</div><div className="category-grid">{categories.map((category) => <button key={category.value} className={input.category === category.value ? "category-card selected" : "category-card"} aria-pressed={input.category === category.value} onClick={() => update("category", category.value)}><span className={`category-icon icon-${category.value.toLowerCase()}`} /><b>{category.title}</b><small>{category.copy}</small></button>)}</div>
         <div className="field-grid three"><label><span>Visual style</span><select value={input.visualStyle} onChange={(e) => update("visualStyle", e.target.value)}><option>Neon arcade</option><option>Pixel noir</option><option>Bright cartoon</option><option>Retro terminal</option><option>Cosmic minimal</option></select></label><label><span>Difficulty</span><select value={input.difficulty} onChange={(e) => update("difficulty", e.target.value as CreateGameInput["difficulty"])}><option value="EASY">Easy</option><option value="NORMAL">Normal</option><option value="HARD">Hard</option></select></label><label><span>Developer buy</span><div className="suffixed-input"><input value="0" disabled aria-label="Developer buy is disabled in Phase 1" /><b>ETH</b></div><small>Disabled for Phase 1 safety</small></label></div>
         <div className="estimate-bar"><div><span>Generation</span><b>About 10–20 seconds</b></div><div><span>pons launch cost</span><b>Read live before approval</b></div><div><span>Network</span><b>Robinhood Chain</b></div></div>
-        <div className="form-footer"><button className="text-button" onClick={() => setStep(1)}>← Back</button><button className="button button-primary" disabled={busy} onClick={generate}>{busy ? "Building preview…" : "Generate playable preview ↗"}</button></div>
+        <div className="form-footer"><button className="text-button" onClick={() => goToStep(1)}>← Back</button><button className="button button-primary" disabled={busy || imageReading} onClick={generate}>{busy ? "Building preview…" : imageReading ? "Processing image…" : "Generate playable preview ↗"}</button></div>
       </section>}
       {step === 3 && <section className="preview-section"><div className="section-heading"><div><span>03</span><h2>Test the build</h2></div><p>Nothing is on-chain yet.</p></div>
-        {config ? <><GameFrame title={config.title} previewHtml={previewHtml} /><div className="preview-meta"><div><span>Engine</span><b>{config.category.toLowerCase()}</b></div><div><span>Difficulty</span><b>{config.difficulty.toLowerCase()}</b></div><div><span>Runtime</span><b>v1 · sandboxed</b></div><div><span>Controls</span><b>keyboard + touch</b></div></div></> : <div className="empty-preview"><span>◫</span><h3>No preview yet</h3><p>Describe the game and generate its first build.</p><button className="button button-quiet" onClick={() => setStep(2)}>Go to game direction</button></div>}
-        {notice && <p className="success-copy">{notice}</p>}{error && <p className="error-copy">{error}</p>}
-        <div className="launch-review"><div><h3>Ready to keep this version?</h3><p>Save it as an immutable draft, connect a verified wallet, then read the current pons cost before signing.</p></div><div className="review-actions"><button className="button button-quiet" disabled={busy} onClick={generate}>Regenerate</button><button className="button button-primary" disabled={!config || busy} onClick={saveDraft}>{status === "authenticated" ? busy ? "Saving…" : "Save draft & continue" : "Sign in with X to save"}</button></div></div>
+        {config && previewHtml ? <><GameFrame title={config.title} previewHtml={previewHtml} /><div className="preview-meta"><div><span>Engine</span><b>{config.category.toLowerCase()}</b></div><div><span>Difficulty</span><b>{config.difficulty.toLowerCase()}</b></div><div><span>Runtime</span><b>v2 · sandboxed</b></div><div><span>Controls</span><b>keyboard + touch</b></div></div></> : <div className="empty-preview"><span>◫</span><h3>No preview yet</h3><p>Describe the game and generate its first build.</p><button className="button button-quiet" onClick={() => goToStep(2)}>Go to game direction</button></div>}
+        {notice && <p className="success-copy" role="status">{notice}</p>}{error && <p className="error-copy" role="alert">{error}</p>}
+        <div className="launch-review"><div><h3>Ready to keep this version?</h3><p>Save it as an immutable draft, connect a verified wallet, then read the current pons cost before signing.</p></div><div className="review-actions"><button className="button button-quiet" disabled={busy || imageReading} onClick={generate}>Regenerate</button><button className="button button-primary" disabled={!config || !previewToken || !previewHtml || busy || authBusy || imageReading || status === "loading"} onClick={saveDraft}>{imageReading ? "Processing image…" : status === "loading" ? "Checking X…" : status === "authenticated" ? busy ? "Saving…" : "Save draft & continue" : authBusy ? "Opening X…" : "Sign in with X to save"}</button></div></div>
       </section>}
-      {error && step !== 3 && <p className="error-copy form-error">{error}</p>}
+      {error && step !== 3 && <p className="error-copy form-error" role="alert">{error}</p>}
     </section>
   </div>;
 }

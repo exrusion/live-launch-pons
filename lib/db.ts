@@ -52,3 +52,34 @@ export async function databaseReady() {
     return false;
   }
 }
+
+const WORKER_HEARTBEAT_MAX_AGE_SECONDS = 45;
+
+export async function recordServiceHeartbeat(serviceName: string, instanceId: string, metadata: Record<string, unknown> = {}) {
+  try {
+    await query(
+      `INSERT INTO service_heartbeats(service_name,instance_id,last_seen_at,metadata)
+       VALUES($1,$2,now(),$3::jsonb)
+       ON CONFLICT(service_name) DO UPDATE SET
+         instance_id=EXCLUDED.instance_id,last_seen_at=EXCLUDED.last_seen_at,metadata=EXCLUDED.metadata`,
+      [serviceName, instanceId, JSON.stringify(metadata)],
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function serviceHeartbeatReady(serviceName: string, maxAgeSeconds = WORKER_HEARTBEAT_MAX_AGE_SECONDS) {
+  if (!hasDatabase()) return false;
+  try {
+    const result = await query<{ ready: boolean }>(
+      `SELECT COALESCE(last_seen_at > now() - ($2::double precision * interval '1 second'),false) AS ready
+       FROM service_heartbeats WHERE service_name=$1 LIMIT 1`,
+      [serviceName, maxAgeSeconds],
+    );
+    return result.rows[0]?.ready === true;
+  } catch {
+    return false;
+  }
+}
