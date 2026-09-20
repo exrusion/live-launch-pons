@@ -135,10 +135,23 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady }: { gameId: st
     if (!address) return;
     setBusy(true); setError(""); setStatus("Reading pons V2 contracts…");
     try {
-      const response = await fetch(`/api/games/${gameId}/launch/quote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ walletAddress: address, useFreeCredit: useCredit, idempotencyKey: crypto.randomUUID() }) });
-      const body = await response.json(); if (!response.ok) throw new Error(body.error || "Could not prepare launch");
+      const pendingKey = `pons-launch-pending:${gameId}:${address.toLowerCase()}`;
+      let idempotencyKey = crypto.randomUUID();
+      try {
+        idempotencyKey = localStorage.getItem(pendingKey) || idempotencyKey;
+        localStorage.setItem(pendingKey, idempotencyKey);
+      } catch {}
+      const response = await fetch(`/api/games/${gameId}/launch/quote`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ walletAddress: address, useFreeCredit: useCredit, idempotencyKey }) });
+      const body = await response.json();
+      if (!response.ok) {
+        try { localStorage.removeItem(pendingKey); } catch {}
+        throw new Error(body.error || "Could not prepare launch");
+      }
       setQuote(body); setStatus("Live quote ready. Your wallet will show the exact transaction before approval.");
-      try { localStorage.setItem(`pons-launch-quote:${gameId}:${address.toLowerCase()}`, JSON.stringify(body)); } catch {}
+      try {
+        localStorage.setItem(`pons-launch-quote:${gameId}:${address.toLowerCase()}`, JSON.stringify(body));
+        localStorage.removeItem(pendingKey);
+      } catch {}
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not prepare launch"); setStatus("Quote failed"); }
     finally { setBusy(false); }
   }
