@@ -1239,3 +1239,12 @@ h1, h2, h3 { text-wrap: balance; }
 .home-page .final-cta {
   background: linear-gradient(110deg, rgba(255,255,255,.84), rgba(231,242,255,.76));
 }
+
+/* Keep the two homepage stories visually separate without breaking the sky. */
+.home-page .community-section {
+  margin-top: clamp(28px, 3vw, 48px);
+}
+
+@media (max-width: 740px) {
+  .home-page .community-section { margin-top: 24px; }
+}
