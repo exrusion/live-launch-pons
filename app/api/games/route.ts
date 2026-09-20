@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseEther } from "viem";
 import { ZodError } from "zod";
-import { auth } from "@/lib/auth";
+import { attachCreatorCookie, ensureCreator } from "@/lib/auth";
 import { createGameSchema, freezeGameVersion, generateGameConfig, validateGameConfigForInput } from "@/lib/game-generator";
 import { previewInputHash, PreviewTokenConfigurationError, PreviewTokenError, verifyPreviewToken } from "@/lib/preview-token";
 import { hashIp, requestIp, requireSameOrigin, sha256, slugify } from "@/lib/security";
@@ -30,8 +30,8 @@ function unexpectedFailureMetadata(error: unknown) {
 export async function POST(request: NextRequest) {
   try {
     requireSameOrigin(request);
-    const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Sign in with X first." }, { status: 401 });
+    const creator = await ensureCreator(request);
+    const session = creator.session;
     const rate = await checkRateLimit(`create:${session.user.id}:${hashIp(requestIp(request.headers))}`, 8, 60 * 60);
     if (!rate.allowed) return NextResponse.json({ error: "Creation limit reached. Try again later." }, { status: 429 });
     let rawBody: unknown;
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       );
       return { gameId, versionId: version.rows[0].id, imageId, slug };
     });
-    return NextResponse.json(result, { status: 201 });
+    return attachCreatorCookie(NextResponse.json(result, { status: 201 }), creator.cookie);
   } catch (error) {
     if (error instanceof PreviewTokenError) {
       const message = error.code === "EXPIRED"
