@@ -8,6 +8,7 @@ const SESSION_DRAFT_ID_KEY = "pons-game-studio:create-draft-id:v2";
 const LEGACY_LOCAL_STORAGE_KEY = "pons-game-studio:create-draft:v1";
 const DRAFT_VERSION = 2;
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+const INDEXED_DB_TIMEOUT_MS = 2_000;
 
 export type CreateDraftPayload = {
   input: CreateGameInput;
@@ -78,6 +79,31 @@ function isStoredCreateDraft(value: unknown): value is StoredCreateDraft {
 
 function localStorageKey(draftId: string) {
   return `${LOCAL_STORAGE_PREFIX}${draftId}`;
+}
+
+function settleWithin<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      resolve(fallback);
+    }, INDEXED_DB_TIMEOUT_MS);
+    promise.then(
+      (value) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(fallback);
+      },
+    );
+  });
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -282,31 +308,26 @@ export async function persistCreateDraft(draftId: string, payload: CreateDraftPa
     expiresAt: now + DRAFT_TTL_MS,
   };
   const localStorage = writeLocalStorage(draftId, draft);
-  const indexedDb = await writeIndexedDb(draftId, draft);
+  const indexedDb = await settleWithin(writeIndexedDb(draftId, draft), false);
   return { indexedDb, localStorage };
 }
 
 export async function restoreCreateDraft(draftId: string): Promise<CreateDraftPayload | null> {
   const now = Date.now();
-  await Promise.allSettled([
-    purgeStaleIndexedDb(now),
-    Promise.resolve().then(() => purgeStaleLocalStorage(now)),
-  ]);
-  const [indexedValue, localValue] = await Promise.all([
-    readIndexedDb(draftId).catch(() => null),
-    Promise.resolve(readLocalStorage(draftId)),
-  ]);
-  const indexedDraft = isStoredCreateDraft(indexedValue) && indexedValue.expiresAt > now ? indexedValue : null;
+  purgeStaleLocalStorage(now);
+  void purgeStaleIndexedDb(now).catch(() => undefined);
+  const localValue = readLocalStorage(draftId);
   const localDraft = isStoredCreateDraft(localValue) && localValue.expiresAt > now ? localValue : null;
-
-  const cleanup: Array<Promise<unknown>> = [];
-  if (indexedValue !== null && !indexedDraft) cleanup.push(deleteIndexedDb(draftId));
   if (localValue !== null && !localDraft) deleteLocalStorage(draftId);
-  if (cleanup.length) await Promise.allSettled(cleanup);
 
-  const restored = indexedDraft && localDraft
-    ? indexedDraft.updatedAt >= localDraft.updatedAt ? indexedDraft : localDraft
-    : indexedDraft || localDraft;
+  // OAuth recovery must not wait on an IndexedDB open that a browser can leave
+  // pending indefinitely. Every sign-in checkpoint is synchronously mirrored to
+  // localStorage, so use it immediately and keep IndexedDB as the larger fallback.
+  const indexedValue = localDraft ? null : await settleWithin(readIndexedDb(draftId), null);
+  const indexedDraft = isStoredCreateDraft(indexedValue) && indexedValue.expiresAt > now ? indexedValue : null;
+  if (indexedValue !== null && !indexedDraft) void deleteIndexedDb(draftId);
+
+  const restored = localDraft || indexedDraft;
   if (!restored) return null;
   return {
     input: restored.input,
@@ -320,6 +341,6 @@ export async function restoreCreateDraft(draftId: string): Promise<CreateDraftPa
 
 export async function clearCreateDraft(draftId: string): Promise<CreateDraftCommit> {
   const localStorage = deleteLocalStorage(draftId);
-  const indexedDb = await deleteIndexedDb(draftId);
+  const indexedDb = await settleWithin(deleteIndexedDb(draftId), false);
   return { indexedDb, localStorage };
 }

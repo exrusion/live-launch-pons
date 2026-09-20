@@ -198,8 +198,8 @@ export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; c
       setAuthBusy(true); setError("");
       try {
         const committed = await enqueueStorageOperation(() => persistCreateDraft(draftId, draftPayload()));
-        if (!committed.indexedDb && !committed.localStorage) {
-          setError("Your draft could not be preserved for sign-in. Free some browser storage and try again.");
+        if (!committed.localStorage) {
+          setError("Your draft could not be preserved reliably for the X sign-in round trip. Free some browser storage and try again.");
           return;
         }
         await signIn("twitter", { callbackUrl: "/create" });
@@ -228,6 +228,16 @@ export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; c
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not save draft"); }
     finally { setBusy(false); }
   }
+
+  if (!draftHydrated) return <div className="creator-layout" aria-busy="true">
+    <aside className="creator-steps">
+      <div className="eyebrow">New game</div><h1>Build the first playable version.</h1>
+      <div className="security-note"><span>Protected recovery</span><p>Your saved image, prompt and exact playable preview are being restored.</p></div>
+    </aside>
+    <section className="creator-workspace">
+      <div className="empty-preview" role="status" aria-live="polite"><span>↻</span><h2>Restoring your draft…</h2><p>Keeping this screen locked until recovery finishes.</p></div>
+    </section>
+  </div>;
 
   return <div className="creator-layout">
     <aside className="creator-steps">
