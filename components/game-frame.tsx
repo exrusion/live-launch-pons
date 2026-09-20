@@ -42,5 +42,5 @@ export function GameFrame({ publicId, versionId, title, previewHtml, cspNonce }:
     addEventListener("message", onMessage);
     return () => removeEventListener("message", onMessage);
   }, [beginRun]);
-  return <div className="game-stage"><iframe ref={frame} title={title} src={previewHtml ? undefined : `/embed/${versionId}`} srcDoc={displayPreviewHtml} sandbox="allow-scripts allow-pointer-lock" allow="fullscreen" />{scoreStatus && <div className="score-toast">{scoreStatus}</div>}</div>;
+  return <div className="game-stage"><iframe ref={frame} title={title} src={previewHtml ? undefined : `/embed/${versionId}?presentation=clean`} srcDoc={displayPreviewHtml} sandbox="allow-scripts allow-pointer-lock" allow="fullscreen" />{scoreStatus && <div className="score-toast">{scoreStatus}</div>}</div>;
 }
