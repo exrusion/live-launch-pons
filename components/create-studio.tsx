@@ -19,6 +19,26 @@ const categories = [
   { value: "SHOOTER", title: "Top-down shooter", copy: "Move, aim, and survive." },
 ] as const;
 
+function validOptionalUrl(value: string | undefined) {
+  if (!value) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+function validateGameInput(input: CreateGameInput): { message: string; step: 1 | 2 } | null {
+  if (input.name.trim().length < 2) return { message: "Enter a game name with at least 2 characters.", step: 1 };
+  if (!/^[A-Z0-9]{2,10}$/.test(input.ticker.trim().toUpperCase())) return { message: "Enter a token ticker using 2–10 letters or numbers.", step: 1 };
+  if (input.description.trim().length < 8) return { message: "Add a token description with at least 8 characters.", step: 1 };
+  if (!validOptionalUrl(input.xUrl)) return { message: "Enter a valid X link, or leave it blank.", step: 1 };
+  if (!validOptionalUrl(input.websiteUrl)) return { message: "Enter a valid website link, or leave it blank.", step: 1 };
+  if (input.prompt.trim().length < 15) return { message: "Describe the game in at least 15 characters.", step: 2 };
+  return null;
+}
+
 export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?: string; cspNonce: string }) {
   const router = useRouter();
   const [input, setInput] = useState<CreateGameInput>({ name: "", ticker: "", description: "", prompt: initialPrompt, category: "RUNNER", visualStyle: "Neon arcade", difficulty: "NORMAL", developerBuyEth: "0", xUrl: "", websiteUrl: "" });
@@ -122,6 +142,15 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
 
   function goToStep(nextStep: number) {
     draftInteractionRef.current = true;
+    if (nextStep === 2) {
+      const validation = validateGameInput({ ...input, prompt: input.prompt.length >= 15 ? input.prompt : "temporary prompt" });
+      if (validation?.step === 1) {
+        setError(validation.message);
+        setStep(1);
+        return;
+      }
+    }
+    setError("");
     setStep(nextStep);
   }
 
@@ -166,6 +195,12 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
 
   async function generate() {
     if (imageReading) { setError("Wait for the token image to finish processing."); return; }
+    const validation = validateGameInput(input);
+    if (validation) {
+      setError(validation.message);
+      setStep(validation.step);
+      return;
+    }
     const generationRevision = generationRevisionRef.current + 1;
     generationRevisionRef.current = generationRevision;
     setBusy(true); setError(""); setNotice("");
