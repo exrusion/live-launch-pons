@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAddress, isAddress, verifyMessage } from "viem";
-import { auth } from "@/lib/auth";
+import { creatorFromRequest } from "@/lib/auth";
 import { transaction } from "@/lib/db";
 import { requireSameOrigin, safeError } from "@/lib/security";
 
 export async function POST(request: NextRequest) {
   try {
     requireSameOrigin(request);
-    const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Sign in with X first." }, { status: 401 });
+    const session = await creatorFromRequest(request);
+    if (!session?.user?.id) return NextResponse.json({ error: "Creator session expired. Request a new wallet challenge." }, { status: 401 });
     const body = await request.json();
     if (!isAddress(body.address) || typeof body.signature !== "string" || typeof body.message !== "string") return NextResponse.json({ error: "Invalid verification payload." }, { status: 400 });
     const address = getAddress(body.address);
