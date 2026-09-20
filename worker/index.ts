@@ -1,14 +1,19 @@
 // Load local environment values before importing modules that construct RPC,
 // database, or queue clients. Railway injects production values before start.
-export {};
-
-if (process.env.NODE_ENV !== "production") {
-  try {
-    process.loadEnvFile(".env.local");
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+async function start() {
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      process.loadEnvFile(".env.local");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
   }
+
+  const { runWorker } = await import("./runtime");
+  await runWorker();
 }
 
-const { runWorker } = await import("./runtime");
-await runWorker();
+void start().catch((error) => {
+  console.error("worker_startup_failed", { message: error instanceof Error ? error.message : "unknown" });
+  process.exitCode = 1;
+});
