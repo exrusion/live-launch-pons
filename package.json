@@ -14,6 +14,7 @@
     "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
     "@tanstack/react-query": "^5.87.1",
     "bullmq": "^5.58.5",
     "ioredis": "^5.7.0",

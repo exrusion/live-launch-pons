@@ -593,7 +593,7 @@ img { max-width: 100%; display: block; }
 }
 
 html, body, button, input, textarea, select {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Inter Variable", Inter, system-ui, -apple-system, sans-serif;
   font-synthesis: none;
 }
 body { text-rendering: optimizeLegibility; }
@@ -618,7 +618,7 @@ h1, h2, h3 { text-wrap: balance; }
 .account-button span { color: #fff; background: #2f6bff; }
 
 .hero:before { background: radial-gradient(circle, rgba(47,107,255,.18), rgba(47,107,255,0) 68%); }
-.hero h1 { font-weight: 650; letter-spacing: -.055em; }
+.hero h1 { font-weight: 700; letter-spacing: -.04em; }
 .hero h1 span { color: #fff; background: #2f6bff; }
 .hero-copy > p { color: #5f6c80; }
 .signup-note span { color: #1749bd; background: #e7efff; }
@@ -678,7 +678,7 @@ h1, h2, h3 { text-wrap: balance; }
 .game-title-row h1, .title-line h1 { min-width: 0; line-height: 1.08; }
 
 @media (max-width: 740px) {
-  .hero h1 { font-weight: 660; letter-spacing: -.045em; }
+  .hero h1 { font-weight: 700; letter-spacing: -.035em; }
   .section-intro h2, .page-heading h1 { font-size: clamp(38px, 12vw, 52px); line-height: 1.03; }
   .community-section { padding-block: 72px 48px; }
   .community-grid { grid-template-columns: 1fr; }
@@ -688,6 +688,23 @@ h1, h2, h3 { text-wrap: balance; }
   .wallet-option { grid-template-columns: minmax(90px,.75fr) minmax(130px,1.25fr); gap: 12px; }
   .wallet-option small { font-size: 12px; }
 }
+
+/* Match the official Pons Launchpad typography with the self-hosted Inter variable face. */
+.logo, .site-nav a, .button, .wallet-pill, .wallet-option span,
+.console-top, .prompt-presets button, .step, .form-section label > span,
+.field-grid label > span, .choice-label, .game-card-body h2,
+.game-title-row h1, .title-line h1, .section-heading h2,
+.page-heading h1, .section-intro h2, .community-grid h3,
+.feature-card h3, .featured-copy h2, .final-cta h2 {
+  font-family: "Inter Variable", Inter, system-ui, -apple-system, sans-serif;
+}
+.logo, .site-nav a, .button, .wallet-pill, .wallet-option span,
+.prompt-presets button, .step, .form-section label > span,
+.field-grid label > span, .choice-label { font-weight: 600; }
+.game-card-body h2, .game-title-row h1, .title-line h1,
+.section-heading h2, .page-heading h1, .section-intro h2,
+.community-grid h3, .feature-card h3, .featured-copy h2,
+.final-cta h2 { font-weight: 700; }
 
 @media (max-width: 430px) {
   .wallet-option { grid-template-columns: 1fr; gap: 4px; }
