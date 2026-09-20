@@ -982,19 +982,16 @@ h1, h2, h3 { text-wrap: balance; }
 .hero-character {
   position: absolute;
   z-index: 0;
-  top: 34px;
-  width: clamp(260px, 28vw, 450px);
-  height: clamp(270px, 30vw, 460px);
-  object-fit: cover;
+  top: 54px;
+  height: auto;
+  object-fit: contain;
   pointer-events: none;
   user-select: none;
   filter: drop-shadow(0 24px 26px rgba(46, 93, 153, .16));
-  -webkit-mask-image: linear-gradient(to bottom, #000 0 52%, rgba(0,0,0,.92) 59%, transparent 76%);
-  mask-image: linear-gradient(to bottom, #000 0 52%, rgba(0,0,0,.92) 59%, transparent 76%);
   animation: hero-world-drift 8s ease-in-out infinite alternate;
 }
-.hero-character-left { left: 0; object-position: left top; }
-.hero-character-right { right: 0; object-position: right top; animation-delay: -3.5s; }
+.hero-character-left { left: 20px; width: clamp(250px, 28vw, 405px); }
+.hero-character-right { top: 68px; right: 28px; width: clamp(225px, 24vw, 345px); animation-delay: -3.5s; }
 .hero-sky .hero {
   min-height: 650px;
   padding-block: 38px 36px;
@@ -1156,7 +1153,7 @@ h1, h2, h3 { text-wrap: balance; }
 
 @media (max-width: 740px) {
   .hero-sky .hero { min-height: 650px; padding-block: 32px 28px; gap: 14px; }
-  .hero-character { top: 105px; width: 210px; height: 220px; opacity: .42; }
+  .hero-character { top: 105px; width: 185px; height: auto; opacity: .42; }
   .hero-character-left { left: -96px; }
   .hero-character-right { right: -96px; }
   .hero-sky .hero h1 { max-width: 520px; margin-top: 12px; font-size: clamp(46px, 14vw, 62px); line-height: .9; }
