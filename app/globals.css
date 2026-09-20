@@ -1388,3 +1388,112 @@ h1, h2, h3 { text-wrap: balance; }
   .market-pulse-caption { left: 15px; right: 15px; bottom: 14px; }
   .market-pulse-caption small { display: none; }
 }
+
+/* Editorial homepage rhythm: compact objects, generous space between stories. */
+.home-page {
+  background-attachment: fixed;
+}
+.home-page .market-pulse-section {
+  padding-block: clamp(88px, 9vw, 138px);
+}
+.home-page .featured-section {
+  padding-block: clamp(62px, 7vw, 100px);
+}
+.home-page .product-section {
+  padding-block: clamp(92px, 10vw, 150px) clamp(58px, 7vw, 96px);
+}
+.home-page .community-section {
+  margin-top: clamp(88px, 10vw, 150px);
+  padding-block: clamp(56px, 7vw, 96px);
+}
+.home-page .final-cta {
+  margin-block: clamp(72px, 9vw, 128px);
+}
+
+/* The three product cards use the same classic editorial voice as Pons. */
+.home-page .feature-card {
+  isolation: isolate;
+  overflow: hidden;
+  transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+}
+.home-page .feature-card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 150px;
+  height: 150px;
+  right: -54px;
+  bottom: -68px;
+  border: 1px solid rgba(47,107,255,.14);
+  border-radius: 50%;
+  box-shadow: 0 0 0 26px rgba(47,107,255,.035), 0 0 0 52px rgba(47,107,255,.02);
+  animation: card-orbit 8s ease-in-out infinite alternate;
+}
+.home-page .feature-card:nth-child(2)::before { animation-delay: -2.7s; }
+.home-page .feature-card:nth-child(3)::before { animation-delay: -5.4s; }
+.home-page .feature-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(47,107,255,.2);
+  box-shadow: 0 24px 58px rgba(48,84,128,.13);
+}
+.home-page .feature-card h3 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: clamp(27px, 2.3vw, 34px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -.035em;
+}
+.home-page .feature-number {
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-weight: 650;
+  letter-spacing: .11em;
+}
+.home-page .mini-stage,
+.home-page .token-orbit,
+.home-page .score-mini {
+  transition: transform .55s cubic-bezier(.2,.8,.2,1);
+}
+.home-page .feature-card:hover .mini-stage,
+.home-page .feature-card:hover .token-orbit,
+.home-page .feature-card:hover .score-mini {
+  transform: translateY(-3px) scale(1.012);
+}
+
+@keyframes card-orbit {
+  from { transform: translate3d(-8px, 7px, 0) rotate(-8deg); }
+  to { transform: translate3d(12px, -10px, 0) rotate(10deg); }
+}
+
+@supports (animation-timeline: view()) {
+  .home-page .market-pulse-section,
+  .home-page .featured-grid,
+  .home-page .product-section,
+  .home-page .community-section,
+  .home-page .final-cta {
+    animation: section-parallax both linear;
+    animation-timeline: view();
+    animation-range: entry 0% cover 32%;
+  }
+  @keyframes section-parallax {
+    from { opacity: .72; transform: translateY(34px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+@media (max-width: 740px) {
+  .home-page .market-pulse-section { padding-block: 64px; }
+  .home-page .featured-section { padding-block: 52px; }
+  .home-page .product-section { padding-block: 72px 46px; }
+  .home-page .community-section { margin-top: 72px; padding-block: 46px 64px; }
+  .home-page .final-cta { margin-block: 62px; }
+  .home-page .feature-card h3 { font-size: 29px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-page .feature-card::before,
+  .home-page .market-pulse-section,
+  .home-page .featured-grid,
+  .home-page .product-section,
+  .home-page .community-section,
+  .home-page .final-cta { animation: none; }
+}
