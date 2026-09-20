@@ -11,8 +11,11 @@ import { hasSponsorRebateConfig } from "@/lib/rebates";
 export const dynamic = "force-dynamic";
 
 export default async function StudioPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await auth(); if (!session?.user?.id) redirect("/create");
   const { id } = await params;
+  const session = await auth();
+  if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
+    redirect(`/auth/signin?callbackUrl=${encodeURIComponent(`/studio/${id}`)}`);
+  }
   const result = await query(
     `SELECT g.*,v.id AS version_id,v.deterministic_id,v.version_number,v.config,v.config_hash,v.manifest_hash,
       (SELECT a.id FROM assets a WHERE a.game_id=g.id AND a.kind='TOKEN_IMAGE' ORDER BY a.created_at DESC LIMIT 1) AS image_id,

@@ -15,7 +15,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     requireSameOrigin(request);
     if (process.env.PONS_LAUNCH_ENABLED !== "true") return NextResponse.json({ error: "Live pons launching is paused." }, { status: 503 });
     const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Sign in with X first." }, { status: 401 });
+    if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
+      return NextResponse.json({ error: "Continue with X before launching.", code: "X_AUTH_REQUIRED" }, { status: 401 });
+    }
     const { id: gameId } = await context.params;
     const body = await request.json();
     if (!isAddress(body.walletAddress)) return NextResponse.json({ error: "Verify a wallet first." }, { status: 400 });

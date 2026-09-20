@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseEther } from "viem";
 import { ZodError } from "zod";
-import { attachCreatorCookie, ensureCreator } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { createGameSchema, freezeGameVersion, generateGameConfig, validateGameConfigForInput } from "@/lib/game-generator";
 import { previewInputHash, PreviewTokenConfigurationError, PreviewTokenError, verifyPreviewToken } from "@/lib/preview-token";
 import { hashIp, requestIp, requireSameOrigin, sha256, slugify } from "@/lib/security";
@@ -30,9 +30,15 @@ function unexpectedFailureMetadata(error: unknown) {
 export async function POST(request: NextRequest) {
   try {
     requireSameOrigin(request);
-    const creator = await ensureCreator(request);
-    const session = creator.session;
-    const rate = await checkRateLimit(`create:${session.user.id}:${hashIp(requestIp(request.headers))}`, 8, 60 * 60);
+    const session = await auth();
+    if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
+      return NextResponse.json(
+        { error: "Continue with X to save this playable version.", code: "X_AUTH_REQUIRED" },
+        { status: 401 },
+      );
+    }
+    const userId = session.user.id;
+    const rate = await checkRateLimit(`create:${userId}:${hashIp(requestIp(request.headers))}`, 8, 60 * 60);
     if (!rate.allowed) return NextResponse.json({ error: "Creation limit reached. Try again later." }, { status: 429 });
     let rawBody: unknown;
     try {
@@ -68,27 +74,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Enter a valid developer buy amount." }, { status: 400 });
     }
     const developerBuyWei = parseEther(developerBuyEth).toString();
-    const suffix = sha256(`${session.user.id}:${frozen.deterministicId}:${Date.now()}`).slice(0, 6);
+    const suffix = sha256(`${userId}:${frozen.deterministicId}:${Date.now()}`).slice(0, 6);
     const slug = `${slugify(input.name) || "game"}-${suffix}`;
     const result = await transaction(async (client) => {
       const game = await client.query<{ id: string }>(
         `INSERT INTO games(owner_user_id,slug,name,ticker,description,category,visual_style,difficulty,prompt,website_url,x_url,developer_buy_wei,status)
          VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'PREVIEW_READY') RETURNING id`,
-        [session.user!.id, slug, input.name, input.ticker, input.description, input.category, input.visualStyle, input.difficulty, input.prompt, input.websiteUrl || null, input.xUrl || null, developerBuyWei],
+        [userId, slug, input.name, input.ticker, input.description, input.category, input.visualStyle, input.difficulty, input.prompt, input.websiteUrl || null, input.xUrl || null, developerBuyWei],
       );
       const gameId = game.rows[0].id;
-      const imageId = await saveTokenImage(client, { userId: session.user!.id, gameId, dataUrl: imageDataUrl });
+      const imageId = await saveTokenImage(client, { userId, gameId, dataUrl: imageDataUrl });
+      // The signed preview token binds this job ID through the frozen config hash.
+      // Claim it for the verified X user so an anonymous pre-login preview survives OAuth.
       const job = generation.jobId
         ? await client.query<{ id: string }>(
-            `UPDATE generation_jobs SET game_id=$2,updated_at=now()
-             WHERE id=$1 AND user_id=$3 AND game_id IS NULL AND status='SUCCEEDED' AND input_hash=$4 AND output_hash=$5
+            `UPDATE generation_jobs SET game_id=$2,user_id=$3,updated_at=now()
+             WHERE id=$1 AND game_id IS NULL AND status='SUCCEEDED' AND input_hash=$4 AND output_hash=$5
              RETURNING id`,
-            [generation.jobId, gameId, session.user!.id, previewInputHash(input), frozen.manifestHash],
+            [generation.jobId, gameId, userId, previewInputHash(input), frozen.manifestHash],
           )
         : await client.query<{ id: string }>(
             `INSERT INTO generation_jobs(user_id,game_id,status,progress,input_hash,output_hash,provider,model,attempts,error_code)
              VALUES($1,$2,'SUCCEEDED',100,$3,$4,$5,$6,$7,$8) RETURNING id`,
-            [session.user!.id, gameId, previewInputHash(input), frozen.manifestHash, generation.provider, generation.model, generation.attempts, generation.failureCode || null],
+            [userId, gameId, previewInputHash(input), frozen.manifestHash, generation.provider, generation.model, generation.attempts, generation.failureCode || null],
           );
       if (!job.rows[0]) throw new Error("GENERATION_JOB_NOT_AVAILABLE");
       await client.query(
@@ -98,17 +106,17 @@ export async function POST(request: NextRequest) {
       const version = await client.query<{ id: string }>(
         `INSERT INTO game_versions(game_id,version_number,deterministic_id,template_version,runtime_version,config,config_hash,manifest_hash,document_html,prompt,release_notes,status,created_by)
          VALUES($1,1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,'Initial playable preview.','PREVIEW',$10) RETURNING id`,
-        [gameId, `${frozen.deterministicId}-${suffix}`, frozen.templateVersion, frozen.runtimeVersion, frozen.configJson, frozen.configHash, frozen.manifestHash, frozen.documentHtml, input.prompt, session.user!.id],
+        [gameId, `${frozen.deterministicId}-${suffix}`, frozen.templateVersion, frozen.runtimeVersion, frozen.configJson, frozen.configHash, frozen.manifestHash, frozen.documentHtml, input.prompt, userId],
       );
       await client.query("UPDATE games SET current_version_id=$1 WHERE id=$2", [version.rows[0].id, gameId]);
       await client.query(
         `INSERT INTO audit_logs(actor_user_id,actor_type,action,resource_type,resource_id,request_id,ip_hash,after_data)
          VALUES($1,'USER','GAME_CREATED','GAME',$2,$3,$4,$5::jsonb)`,
-        [session.user!.id, gameId, request.headers.get("x-request-id") || crypto.randomUUID(), hashIp(requestIp(request.headers)), JSON.stringify({ versionId: version.rows[0].id, imageId })],
+        [userId, gameId, request.headers.get("x-request-id") || crypto.randomUUID(), hashIp(requestIp(request.headers)), JSON.stringify({ versionId: version.rows[0].id, imageId })],
       );
       return { gameId, versionId: version.rows[0].id, imageId, slug };
     });
-    return attachCreatorCookie(NextResponse.json(result, { status: 201 }), creator.cookie);
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof PreviewTokenError) {
       const message = error.code === "EXPIRED"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { injected, walletConnect } from "wagmi/connectors";
@@ -35,8 +36,10 @@ export function Providers({ children, appUrl }: { children: ReactNode; appUrl: s
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, retry: 1 } } }));
   const [wagmiConfig] = useState(() => appConfig(appUrl));
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    </WagmiProvider>
+    <SessionProvider>
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      </WagmiProvider>
+    </SessionProvider>
   );
 }
