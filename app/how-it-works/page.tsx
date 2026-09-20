@@ -4,7 +4,7 @@ export const metadata = { title: "How it works" };
 
 export default function HowItWorksPage() {
   const steps = [
-    ["01", "Verify the creator", "Sign in with X, then sign a no-gas wallet message. The immutable X account ID and one wallet share a single launch entitlement."],
+    ["01", "Create freely", "Build and save without an account. Sign a no-gas wallet message only when you are ready to launch."],
     ["02", "Generate safe configuration", "Your prompt selects and configures one of three controlled canvas engines. It never injects arbitrary executable code into the application."],
     ["03", "Play before launch", "The game runs in a credential-free sandbox. Test touch, keyboard, pause, restart, mute, and fullscreen before freezing the version."],
     ["04", "Read pons live", "The app reads the official V2 factory, active launch config, fee, wallet eligibility, and economics pin directly on Robinhood Chain."],
