@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { PromptHero } from "@/components/prompt-hero";
 import { GameFrame } from "@/components/game-frame";
 import { exploreGames } from "@/lib/data";
@@ -10,20 +11,23 @@ export default async function HomePage() {
   const featured = games[0];
 
   return <main>
-    <section className="hero shell">
-      <div className="hero-copy">
-        <div className="eyebrow"><span className="live-dot" /> Built to launch through pons</div>
-        <h1>Make the game.<br /><span>Launch the token.</span></h1>
-        <p>Turn one idea into a phone-ready arcade game, freeze the playable build, and launch its token on Robinhood Chain.</p>
-        <div className="hero-actions">
-          <Link className="button button-primary" href="/create">Build a game <span>↗</span></Link>
-          <Link className="button button-quiet" href="/explore">Enter the arcade</Link>
+    <section className="hero-sky">
+      <Image className="hero-characters" src="/hero-game-characters.png" alt="" width={1672} height={941} priority aria-hidden="true" />
+      <div className="hero shell">
+        <div className="hero-copy">
+          <div className="hero-pill"><span className="live-dot" /> AI game studio on pons</div>
+          <h1>Make the game.<br /><span>Launch it on pons.</span></h1>
+          <p>Describe the world. Play the first build. Launch the token only when the game feels right.</p>
+          <div className="hero-actions">
+            <Link className="button button-primary" href="/create">Build a game <span>↗</span></Link>
+            <Link className="button button-quiet" href="/explore">Explore games</Link>
+          </div>
+          <div className="signup-note"><span>Wallet-owned publishing</span><p>Every version stays playable.</p></div>
         </div>
-        <div className="signup-note"><span>Wallet-owned publishing</span><p>Connect and verify your creator wallet when you are ready to launch.</p></div>
-      </div>
-      <div className="hero-console">
-        <PromptHero />
-        <div className="console-foot"><span>Runner</span><i /><span>Flappy</span><i /><span>Shooter</span></div>
+        <div className="hero-console">
+          <PromptHero />
+          <div className="console-foot"><span>Runner</span><i /><span>Flappy</span><i /><span>Shooter</span></div>
+        </div>
       </div>
     </section>
 
