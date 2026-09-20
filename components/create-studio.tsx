@@ -13,7 +13,7 @@ const categories = [
   { value: "SHOOTER", title: "Top-down shooter", copy: "Move, aim, and survive." },
 ] as const;
 
-export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string }) {
+export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?: string; cspNonce: string }) {
   const router = useRouter();
   const { status } = useSession();
   const [input, setInput] = useState<CreateGameInput>({ name: "", ticker: "", description: "", prompt: initialPrompt, category: "RUNNER", visualStyle: "Neon arcade", difficulty: "NORMAL", developerBuyEth: "0", xUrl: "", websiteUrl: "" });
@@ -23,7 +23,7 @@ export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string })
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [step, setStep] = useState(1);
-  const previewHtml = useMemo(() => config ? buildGameDocument(config, { versionId: "preview" }) : "", [config]);
+  const previewHtml = useMemo(() => config ? buildGameDocument(config, { nonce: cspNonce, versionId: "preview" }) : "", [config, cspNonce]);
 
   function update<K extends keyof CreateGameInput>(key: K, value: CreateGameInput[K]) { setInput((current) => ({ ...current, [key]: value })); }
   function chooseImage(event: ChangeEvent<HTMLInputElement>) {
