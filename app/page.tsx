@@ -99,7 +99,9 @@ export default async function HomePage() {
       </div>
       <div className="feature-grid">
         <article className="feature-card accent-card"><span className="feature-number">01 · BUILD</span><div className="mini-stage"><i className="runner" /><i className="obstacle" /><i className="coin" /></div><h3>Shape the game</h3><p>Choose a runner, flappy-style challenge, or top-down shooter and tune it with one prompt.</p></article>
+        <span className="feature-arrow" aria-hidden="true">→</span>
         <article className="feature-card"><span className="feature-number">02 · LAUNCH</span><div className="token-orbit"><span>$</span><i /><i /><i /></div><h3>Launch through pons</h3><p>Your wallet signs the official V2 factory call only after the playable version is frozen.</p></article>
+        <span className="feature-arrow" aria-hidden="true">→</span>
         <article className="feature-card"><span className="feature-number">03 · COMPETE</span><div className="score-mini"><b>12,480</b><span>replay-checked score</span><i style={{ width: "82%" }} /><i style={{ width: "64%" }} /><i style={{ width: "46%" }} /></div><h3>Climb the board</h3><p>Server-backed runs keep the leaderboard competitive while every version remains playable.</p></article>
       </div>
     </section>
