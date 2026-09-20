@@ -979,26 +979,29 @@ h1, h2, h3 { text-wrap: balance; }
   -webkit-mask-image: linear-gradient(to bottom, #000, transparent 82%);
   mask-image: linear-gradient(to bottom, #000, transparent 82%);
 }
-.hero-characters {
+.hero-character {
   position: absolute;
-  inset: 0;
   z-index: 0;
-  width: 100%;
-  height: 100%;
+  top: 34px;
+  width: clamp(260px, 28vw, 450px);
+  height: clamp(270px, 30vw, 460px);
   object-fit: cover;
-  object-position: center;
   pointer-events: none;
   user-select: none;
   filter: drop-shadow(0 24px 26px rgba(46, 93, 153, .16));
+  -webkit-mask-image: linear-gradient(to bottom, #000 0 72%, transparent 96%);
+  mask-image: linear-gradient(to bottom, #000 0 72%, transparent 96%);
   animation: hero-world-drift 8s ease-in-out infinite alternate;
 }
+.hero-character-left { left: 0; object-position: left top; }
+.hero-character-right { right: 0; object-position: right top; animation-delay: -3.5s; }
 .hero-sky .hero {
-  min-height: 760px;
-  padding-block: 50px 48px;
+  min-height: 650px;
+  padding-block: 38px 36px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 27px;
+  gap: 14px;
   text-align: center;
 }
 .hero-sky .hero:before { display: none; }
@@ -1023,7 +1026,7 @@ h1, h2, h3 { text-wrap: balance; }
   margin: 16px 0 12px;
   color: #0a1424;
   font-family: "Instrument Serif", Georgia, serif;
-  font-size: clamp(56px, 7vw, 94px);
+  font-size: clamp(52px, 5.6vw, 74px);
   font-weight: 400;
   line-height: .88;
   letter-spacing: -.048em;
@@ -1041,26 +1044,26 @@ h1, h2, h3 { text-wrap: balance; }
   font-size: 17px;
   line-height: 1.55;
 }
-.hero-sky .hero-actions { justify-content: center; margin: 17px 0 11px; }
+.hero-sky .hero-actions { justify-content: center; margin: 13px 0 8px; }
 .hero-sky .hero-actions .button { min-height: 42px; border-radius: 13px; padding-inline: 18px; }
 .hero-sky .signup-note { justify-content: center; gap: 7px; font-size: 11px; }
 .hero-sky .signup-note span { padding: 5px 9px; }
 .hero-sky .signup-note p { color: #6d7b8d; }
-.hero-sky .hero-console { z-index: 3; width: min(700px, 100%); margin-inline: auto; }
+.hero-sky .hero-console { z-index: 3; width: min(660px, 100%); margin-inline: auto; }
 .hero-sky .prompt-console {
-  padding: 14px;
+  padding: 11px;
   border: 1px solid rgba(28,63,103,.1);
   border-radius: 24px;
   background: rgba(255,255,255,.88);
   box-shadow: 0 24px 70px rgba(43,80,122,.15);
   backdrop-filter: blur(20px);
 }
-.hero-sky .console-top { margin: 1px 3px 9px; font-size: 12px; }
-.hero-sky .prompt-console textarea { min-height: 116px; padding: 16px; border-radius: 15px; font-size: 18px; line-height: 1.42; }
-.hero-sky .prompt-presets { margin: 9px 0 10px; }
+.hero-sky .console-top { margin: 1px 3px 7px; font-size: 12px; }
+.hero-sky .prompt-console textarea { min-height: 86px; padding: 14px; border-radius: 15px; font-size: 17px; line-height: 1.4; }
+.hero-sky .prompt-presets { margin: 7px 0 7px; }
 .hero-sky .prompt-presets button { min-height: 30px; padding-inline: 10px; font-size: 10px; background: rgba(255,255,255,.72); }
 .hero-sky .prompt-actions .button { min-height: 38px; border-radius: 12px; padding-inline: 15px; font-size: 12px; }
-.hero-sky .console-foot { margin-top: 9px; color: #64748b; }
+.hero-sky .console-foot { margin-top: 6px; color: #64748b; }
 
 @keyframes hero-world-drift {
   from { transform: translate3d(0, -4px, 0) scale(1.015); }
@@ -1074,17 +1077,19 @@ h1, h2, h3 { text-wrap: balance; }
 .final-cta { margin-block: 18px 42px; border: 1px solid #d8e5f8; border-radius: 24px; background: linear-gradient(110deg, #fff, #edf5ff); }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-characters { animation: none; }
+  .hero-character { animation: none; }
 }
 
 @media (max-width: 740px) {
-  .hero-sky .hero { min-height: 720px; padding-block: 38px 34px; gap: 22px; }
-  .hero-characters { width: 152%; max-width: none; left: -26%; opacity: .58; object-fit: cover; }
-  .hero-sky .hero h1 { max-width: 520px; margin-top: 14px; font-size: clamp(50px, 16vw, 72px); line-height: .88; }
+  .hero-sky .hero { min-height: 650px; padding-block: 32px 28px; gap: 14px; }
+  .hero-character { top: 105px; width: 210px; height: 220px; opacity: .42; }
+  .hero-character-left { left: -96px; }
+  .hero-character-right { right: -96px; }
+  .hero-sky .hero h1 { max-width: 520px; margin-top: 12px; font-size: clamp(46px, 14vw, 62px); line-height: .9; }
   .hero-sky .hero-copy > p { max-width: 480px; font-size: 15px; }
   .hero-sky .hero-actions { width: 100%; }
   .hero-sky .hero-actions .button { flex: 1 1 145px; }
-  .hero-sky .prompt-console textarea { min-height: 108px; font-size: 16px; }
+  .hero-sky .prompt-console textarea { min-height: 82px; font-size: 16px; }
   .hero-sky .prompt-presets { gap: 5px; }
   .hero-sky .prompt-presets button { min-height: 29px; }
   .final-cta { margin-inline: 12px; }

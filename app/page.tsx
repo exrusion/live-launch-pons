@@ -12,7 +12,8 @@ export default async function HomePage() {
 
   return <main>
     <section className="hero-sky">
-      <Image className="hero-characters" src="/hero-game-characters.png" alt="" width={1672} height={941} priority aria-hidden="true" />
+      <Image className="hero-character hero-character-left" src="/hero-game-characters.png" alt="" width={1672} height={941} priority aria-hidden="true" />
+      <Image className="hero-character hero-character-right" src="/hero-game-characters.png" alt="" width={1672} height={941} priority aria-hidden="true" />
       <div className="hero shell">
         <div className="hero-copy">
           <div className="hero-pill"><span className="live-dot" /> AI game studio on pons</div>
