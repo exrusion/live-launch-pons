@@ -576,3 +576,121 @@ img { max-width: 100%; display: block; }
   .public-stage-grid .game-stage,
   .featured-grid > .game-stage { min-height: 240px; aspect-ratio: 5 / 4; }
 }
+
+/* Final visual system: calm Pons blue, consistent typography, and resilient wrapping. */
+:root {
+  --green: #2f6bff;
+  --green-2: #1f56dc;
+  --bg: #f4f6f9;
+  --bg-soft: #e9eef7;
+  --panel-2: #f5f7fb;
+  --ink: #101828;
+  --muted: #667085;
+  --muted-2: #7d8798;
+  --line: rgba(16, 24, 40, .09);
+  --line-strong: rgba(16, 24, 40, .18);
+  --shadow: 0 24px 70px rgba(20, 38, 75, .12);
+}
+
+html, body, button, input, textarea, select {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-synthesis: none;
+}
+body { text-rendering: optimizeLegibility; }
+h1, h2, h3, h4, p, span, b, strong, small, code { overflow-wrap: anywhere; }
+h1, h2, h3 { text-wrap: balance; }
+
+:where(a, button, input, textarea, select, iframe):focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 5px #2f6bff !important;
+}
+::selection { background: #cfe0ff; color: #0b1f47; }
+.eyebrow, .success-copy, .section-heading > div > span, .security-note span,
+.dashboard-game-copy span, .dashboard-open, .title-line > span, .game-title-row > span,
+.tx-link, .process-list article > span, .docs-content code, .rank { color: #2459d3; }
+.live-dot, .wallet-dot { background: #2f6bff; box-shadow: 0 0 0 4px rgba(47,107,255,.15); }
+.button-primary { color: #fff; background: #2f6bff; }
+.button-primary:hover:not(:disabled) { background: #1f56dc; box-shadow: 0 10px 24px rgba(47,107,255,.22); }
+.button-quiet:hover:not(:disabled) { background: #f4f7ff; border-color: #b7c9ef; }
+
+.site-header { background: rgba(244, 246, 249, .88); }
+.site-nav a { color: #606b7d; }
+.logo-mark i:nth-child(3) { background: #2f6bff; }
+.account-button span { color: #fff; background: #2f6bff; }
+
+.hero:before { background: radial-gradient(circle, rgba(47,107,255,.18), rgba(47,107,255,0) 68%); }
+.hero h1 { font-weight: 650; letter-spacing: -.055em; }
+.hero h1 span { color: #fff; background: #2f6bff; }
+.hero-copy > p { color: #5f6c80; }
+.signup-note span { color: #1749bd; background: #e7efff; }
+.prompt-console textarea:focus, .form-section input:focus, .form-section textarea:focus,
+.form-section select:focus { border-color: #7da5ff; box-shadow: 0 0 0 4px rgba(47,107,255,.14); }
+.console-top i { background: #2f6bff; box-shadow: 0 0 0 4px #e5edff; }
+.prompt-presets button:hover { color: #163f9d; background: #edf3ff; border-color: #bcd0ff; }
+
+.token-orbit span { color: #fff; box-shadow: 0 0 0 13px rgba(47,107,255,.12); }
+.mini-stage:after, .progress-track i { background: #2f6bff; }
+.score-mini b, .game-card-body > div > span { color: #5d8dff; }
+.art-character, .game-token-image, .game-logo-large, .profile-avatar { color: #fff; background: #2f6bff; }
+.status-live, .status-confirmed, .status-succeeded, .status-available { background: #e7efff; color: #1749bd; }
+.game-card-art .status-live, .game-card-art .status-confirmed,
+.game-card-art .status-succeeded, .game-card-art .status-available { background: #2f6bff; color: #fff; }
+
+.step.active span { color: #fff; background: #2f6bff; }
+.step.complete span, .prefixed-input b { color: #2459d3; border-color: #b8cdfd; }
+.image-upload { border-color: #b8cdfd; background: #f1f5ff; }
+.image-upload > span { color: #2459d3; }
+.category-card.selected { border-color: #83a7f5; background: #edf3ff; box-shadow: inset 0 0 0 1px #83a7f5; }
+.credit-card { background: linear-gradient(145deg, #edf3ff, #fff) !important; }
+.launch-status > span, .feature-lock, .player-avatar { color: #2459d3; background: #e7efff; }
+.switch-row input { accent-color: #2f6bff; }
+.contract-row button { color: #1749bd; background: #e7efff; }
+.period-tabs button.active { color: #fff; background: #2f6bff; }
+.state-row span { color: #1749bd; background: #edf3ff; border-color: #c4d5ff; }
+
+.wallet-popover { width: min(380px, calc(100vw - 24px)); gap: 10px; }
+.wallet-option {
+  display: grid;
+  grid-template-columns: minmax(110px, .8fr) minmax(150px, 1.2fr);
+  gap: 18px;
+  align-items: center;
+  min-height: 62px;
+  padding: 13px 16px;
+}
+.wallet-option span { min-width: 0; font-size: 15px; font-weight: 650; line-height: 1.25; }
+.wallet-option small { min-width: 0; text-align: right; line-height: 1.35; }
+.wallet-option:hover { border-color: #a9c0f4; background: #f1f5ff; }
+
+.community-section { padding-block: 104px 72px; }
+.community-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.community-grid article { min-height: 340px; padding: 34px; border-radius: 28px; background: #fff; box-shadow: 0 12px 40px rgba(20,38,75,.06); display: flex; flex-direction: column; }
+.community-grid article > span { color: #2459d3; font-size: 11px; font-weight: 750; letter-spacing: .1em; }
+.community-grid h3 { max-width: 520px; margin: 54px 0 12px; font-size: clamp(30px,4vw,46px); line-height: 1.05; letter-spacing: -.045em; }
+.community-grid p { max-width: 560px; margin: 0; color: #667085; line-height: 1.65; }
+.community-grid small { margin-top: auto; padding-top: 28px; color: #7d8798; font-weight: 650; }
+.roadmap-tags, .version-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 24px; }
+.roadmap-tags b, .version-flow b { padding: 8px 12px; border-radius: 999px; color: #1749bd; background: #edf3ff; font-size: 12px; }
+.version-flow i { color: #98a2b3; font-style: normal; }
+.future-card { opacity: 1; padding-inline: 18px !important; border-radius: 18px; background: #edf3ff; border-top: 0 !important; }
+
+.version-card code, .version-card b, .contract-row code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.version-card > div { background: #fff; border-color: var(--line); }
+.game-title-row, .title-line { min-width: 0; }
+.game-title-row h1, .title-line h1 { min-width: 0; line-height: 1.08; }
+
+@media (max-width: 740px) {
+  .hero h1 { font-weight: 660; letter-spacing: -.045em; }
+  .section-intro h2, .page-heading h1 { font-size: clamp(38px, 12vw, 52px); line-height: 1.03; }
+  .community-section { padding-block: 72px 48px; }
+  .community-grid { grid-template-columns: 1fr; }
+  .community-grid article { min-height: 310px; padding: 24px; border-radius: 22px; }
+  .community-grid h3 { margin-top: 38px; }
+  .wallet-popover { left: 12px; right: 12px; width: auto; max-height: calc(100vh - 90px); overflow-y: auto; }
+  .wallet-option { grid-template-columns: minmax(90px,.75fr) minmax(130px,1.25fr); gap: 12px; }
+  .wallet-option small { font-size: 12px; }
+}
+
+@media (max-width: 430px) {
+  .wallet-option { grid-template-columns: 1fr; gap: 4px; }
+  .wallet-option small { text-align: left; }
+  .game-title-row h1, .title-line h1 { font-size: 30px; }
+}
