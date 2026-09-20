@@ -11,7 +11,7 @@ import { hasSponsorRebateConfig } from "@/lib/rebates";
 export const dynamic = "force-dynamic";
 
 export default async function StudioPage({ params }: { params: Promise<{ id: string }> }) {
-  const session = await auth(); if (!session?.user?.id) redirect("/auth/signin");
+  const session = await auth(); if (!session?.user?.id) redirect("/create");
   const { id } = await params;
   const result = await query(
     `SELECT g.*,v.id AS version_id,v.deterministic_id,v.version_number,v.config,v.config_hash,v.manifest_hash,
