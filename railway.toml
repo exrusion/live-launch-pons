@@ -3,7 +3,7 @@ builder = "RAILPACK"
 buildCommand = "pnpm install --frozen-lockfile && pnpm build"
 
 [deploy]
-preDeployCommand = "pnpm migrate && pnpm seed"
+preDeployCommand = "pnpm deploy:prepare"
 startCommand = "pnpm start"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 120
