@@ -1245,6 +1245,48 @@ h1, h2, h3 { text-wrap: balance; }
   margin-top: clamp(28px, 3vw, 48px);
 }
 
+/* Join the global navigation to the homepage sky instead of stacking a white bar above it. */
+.site-header {
+  isolation: isolate;
+  border-bottom-color: rgba(76, 120, 179, .1);
+  background:
+    radial-gradient(circle at 8% 120%, rgba(100, 221, 255, .18), transparent 26%),
+    linear-gradient(180deg, rgba(239,248,255,.94), rgba(239,248,255,.86));
+  box-shadow: none;
+}
+.site-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .22;
+  background-image: radial-gradient(#8fa7c6 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+/* Keep the live-game module centered, readable and inside the viewport at every zoom. */
+.home-page .featured-section { overflow: clip; }
+.home-page .featured-grid {
+  width: min(920px, calc(100% - 32px));
+  max-width: 920px;
+  margin-inline: auto;
+  grid-template-columns: minmax(170px, 205px) minmax(0, 1fr);
+  gap: 16px;
+}
+.home-page .featured-copy,
+.home-page .featured-grid > .game-stage { min-width: 0; }
+.home-page .featured-copy h2,
+.home-page .featured-copy > p,
+.home-page .featured-copy dd { overflow-wrap: anywhere; }
+
+@media (max-width: 740px) {
+  .home-page .featured-grid {
+    width: min(100% - 24px, 560px);
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 740px) {
   .home-page .community-section { margin-top: 24px; }
 }
