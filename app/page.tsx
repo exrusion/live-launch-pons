@@ -12,14 +12,14 @@ export default async function HomePage() {
   return <main>
     <section className="hero shell">
       <div className="hero-copy">
-        <div className="eyebrow"><span className="live-dot" /> Games launched through pons</div>
+        <div className="eyebrow"><span className="live-dot" /> Built to launch through pons</div>
         <h1>Make the game.<br /><span>Launch the token.</span></h1>
         <p>Turn one idea into a phone-ready arcade game, freeze the playable build, and launch its token on Robinhood Chain.</p>
         <div className="hero-actions">
           <Link className="button button-primary" href="/create">Build a game <span>↗</span></Link>
           <Link className="button button-quiet" href="/explore">Enter the arcade</Link>
         </div>
-        <div className="signup-note"><span>One launch on us</span><p>Sign in with X and verify your creator wallet to reserve the Phase 1 credit.</p></div>
+        <div className="signup-note"><span>Phase 1 launch credit</span><p>Sign in with X and verify your creator wallet to check eligibility.</p></div>
       </div>
       <div className="hero-console">
         <PromptHero />

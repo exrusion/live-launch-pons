@@ -17,9 +17,9 @@ export function ExploreGrid({ games }: { games: ExploreGame[] }) {
   const visibleGames = useMemo(() => filter === "ALL" ? games : games.filter((game) => game.category === filter), [filter, games]);
 
   return <>
-    <div className="filter-bar" aria-label="Filter games by engine">
+    <div className="filter-bar" role="group" aria-label="Filter games by engine">
       {filters.map((item) => <button key={item.value} className={filter === item.value ? "active" : ""} aria-pressed={filter === item.value} onClick={() => setFilter(item.value)}>{item.label}</button>)}
-      <small>{visibleGames.length} available</small>
+      <small aria-live="polite">{visibleGames.length} available</small>
     </div>
     {visibleGames.length ? <div className="games-grid">{visibleGames.map((game) => <Link className="game-card" key={game.id} href={`/game/${game.tokenAddress || game.slug}`}>
       <div className={`game-card-art art-${game.category.toLowerCase()}`}>
