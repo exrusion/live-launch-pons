@@ -891,3 +891,67 @@ h1, h2, h3 { text-wrap: balance; }
   .public-game-page .game-about-grid article { padding: 14px; }
   .public-game-page .leaderboard-head h2 { font-size: 34px; }
 }
+
+/* Deliberately dense homepage composition: keep every supporting section secondary. */
+.featured-section { padding-block: 38px; }
+.featured-grid {
+  width: min(920px, calc(100% - 48px));
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+}
+.featured-copy h2 { margin: 6px 0; font-size: 32px; line-height: 1; }
+.featured-copy > p { margin: 0; font-size: 12px; line-height: 1.45; }
+.featured-copy dl { margin: 12px 0; gap: 4px; }
+.featured-copy dl div { padding-block: 5px; font-size: 11px; }
+.featured-copy .button { min-height: 36px; padding-inline: 13px; font-size: 11px; }
+.featured-grid > .game-stage { border-radius: 16px; box-shadow: 0 15px 38px rgba(0,0,0,.18); }
+
+.product-section { padding-block: 42px; }
+.product-section .section-intro { gap: 26px; margin-bottom: 18px; }
+.product-section .section-intro h2 { font-size: clamp(30px, 3.5vw, 44px); line-height: .98; }
+.product-section .section-intro p { max-width: 430px; font-size: 13px; line-height: 1.5; }
+.feature-grid { gap: 14px; }
+.feature-card { min-height: 252px; padding: 13px; border-radius: 17px; }
+.feature-card small { font-size: 9px; }
+.feature-card h3 { margin: 11px 0 4px; font-size: 17px; }
+.feature-card > p { font-size: 12px; line-height: 1.42; }
+.mini-stage, .token-orbit, .score-mini { height: 116px; margin-top: 9px; border-radius: 14px; }
+.token-orbit span { width: 54px; height: 54px; border-radius: 17px; font-size: 24px; }
+.score-mini { padding: 15px; }
+.score-mini b { font-size: 29px; }
+.score-mini span { margin-bottom: 7px; font-size: 8px; }
+
+.community-section { padding-block: 42px; }
+.community-section .section-intro { gap: 26px; margin-bottom: 18px; }
+.community-section .section-intro h2 { font-size: clamp(32px, 3.6vw, 46px); line-height: .98; }
+.community-section .section-intro p { max-width: 440px; font-size: 13px; line-height: 1.5; }
+.community-grid { gap: 14px; }
+.community-grid article { min-height: 210px; padding: 18px; border-radius: 18px; }
+.community-grid article > small { font-size: 9px; }
+.community-grid h3 { margin: 20px 0 6px; font-size: clamp(25px, 2.5vw, 34px); line-height: 1; }
+.community-grid p { font-size: 12px; line-height: 1.48; }
+.roadmap-tags { margin-top: 12px; gap: 6px; }
+.roadmap-tags span { padding: 5px 8px; font-size: 10px; }
+.community-grid article > strong { margin-top: 12px; font-size: 10px; }
+
+.final-cta { min-height: 176px; padding: 26px; }
+.final-cta h2 { font-size: clamp(32px, 4vw, 48px); }
+.final-cta p { font-size: 13px; }
+
+@media (max-width: 740px) {
+  .featured-section { padding-block: 28px; }
+  .featured-grid { width: min(100% - 24px, 560px); grid-template-columns: 1fr; gap: 16px; }
+  .featured-copy h2 { font-size: 29px; }
+  .featured-copy dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .featured-copy dl div { min-width: 0; display: block; padding: 7px; border: 1px solid var(--line); border-radius: 10px; }
+  .featured-copy dl dd { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; }
+  .featured-grid > .game-stage { min-height: 0; aspect-ratio: 16 / 10; }
+  .product-section, .community-section { padding-block: 32px; }
+  .product-section .section-intro, .community-section .section-intro { margin-bottom: 15px; }
+  .feature-card { min-height: 230px; }
+  .mini-stage, .token-orbit, .score-mini { height: 104px; }
+  .community-grid article { min-height: 190px; padding: 16px; }
+  .community-grid h3 { margin-top: 16px; }
+  .final-cta { min-height: 150px; padding: 20px; }
+}
