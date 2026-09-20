@@ -71,7 +71,7 @@ export async function GET() {
       worker,
       workerDatabase,
       workerRedis,
-      xAuth: Boolean(process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET),
+      creatorSessions: Boolean(process.env.CREATOR_SESSION_SECRET || process.env.NEXTAUTH_SECRET),
       aiConfigured: aiStatus.configured,
       aiConfigValid: aiStatus.valid,
       aiBudgetConfigValid: aiBudgetStatus.valid,
