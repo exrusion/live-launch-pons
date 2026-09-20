@@ -1,0 +1,4 @@
+import Link from "next/link";
+
+export const metadata = { title: "Tournaments" };
+export default function TournamentsPage() { return <main className="shell narrow-page"><div className="locked-feature"><span className="feature-lock">03</span><span className="eyebrow">Phase 3 · disabled</span><h1>Weekly tournaments come after verified rewards.</h1><p>Leaderboards are live in Phase 1. Prize pools remain disabled until a funded reward vault, payout accounting, and a documented fee-routing path are audited end to end.</p><div className="locked-list"><span>Highest score</span><span>Longest survival</span><span>Fastest completion</span></div><p className="muted-copy">The interface will never promise an undeclared or unfunded reward.</p><Link className="button button-primary" href="/explore">Play current games</Link></div></main>; }

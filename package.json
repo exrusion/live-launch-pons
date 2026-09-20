@@ -1,0 +1,40 @@
+{
+  "name": "pons-game-studio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "migrate": "node scripts/migrate.mjs",
+    "seed": "node scripts/seed.mjs",
+    "worker": "tsx worker/index.ts",
+    "check": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.87.1",
+    "bullmq": "^5.58.5",
+    "ioredis": "^5.7.0",
+    "next": "15.5.25",
+    "next-auth": "^4.24.11",
+    "pg": "^8.16.3",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "tsx": "^4.20.5",
+    "viem": "^2.37.5",
+    "wagmi": "2.16.8",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "@types/pg": "^8.15.5",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "typescript": "^5.9.2"
+  },
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22"
+  }
+}
