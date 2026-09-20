@@ -10,6 +10,7 @@ const cleanPresentationStyle = `<style nonce="${FROZEN_GAME_DOCUMENT_NONCE}">
 .overlay>div{width:min(100%,560px);padding:18px}
 .overlay h1{font-size:clamp(27px,5vw,44px)!important;line-height:1!important;text-wrap:balance}
 .overlay p{max-width:460px!important;font-size:clamp(12px,1.55vw,14px)!important;line-height:1.45!important;text-wrap:balance}
+.hint{display:none!important}
 </style>`;
 
 export async function GET(request: Request, context: { params: Promise<{ versionId: string }> }) {
