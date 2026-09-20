@@ -26,6 +26,9 @@ function walletDetails(name: string) {
   if (normalized.includes("rabby")) {
     return { title: "Rabby Wallet", detail: "Browser extension" };
   }
+  if (normalized.includes("phantom")) {
+    return { title: "Phantom", detail: "EVM browser extension or mobile app" };
+  }
 
   return {
     title: normalized === "injected" ? "Browser wallet" : name,
@@ -43,10 +46,12 @@ export function WalletButton() {
   const [busy, setBusy] = useState(false);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
-  const availableConnectors = connectors.filter((connector, index, list) => {
+  const uniqueConnectors = connectors.filter((connector, index, list) => {
     const identity = `${connector.name}:${connector.id}`.toLowerCase();
     return list.findIndex((candidate) => `${candidate.name}:${candidate.id}`.toLowerCase() === identity) === index;
   });
+  const hasNamedWallet = uniqueConnectors.some((connector) => !["injected", "browser wallet"].includes(connector.name.toLowerCase()));
+  const availableConnectors = uniqueConnectors.filter((connector) => !hasNamedWallet || !["injected", "browser wallet"].includes(connector.name.toLowerCase()));
   const hasWalletConnectConnector = availableConnectors.some((connector) => connector.name.toLowerCase().includes("walletconnect"));
 
   async function verify() {
