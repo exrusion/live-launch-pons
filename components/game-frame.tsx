@@ -1,13 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSession } from "next-auth/react";
 import { applyPreviewNonce } from "@/lib/preview-html";
 
 type GameMessage = { source: string; type: string; payload: { score?: number; durationMs?: number; metric?: string; events?: unknown[] } };
 
 export function GameFrame({ publicId, versionId, title, previewHtml, cspNonce }: { publicId?: string; versionId?: string; title: string; previewHtml?: string; cspNonce?: string }) {
-  const { status } = useSession();
   const run = useRef<{ runId: string; runToken: string } | null>(null);
   const frame = useRef<HTMLIFrameElement | null>(null);
   const [scoreStatus, setScoreStatus] = useState("");
@@ -21,10 +19,10 @@ export function GameFrame({ publicId, versionId, title, previewHtml, cspNonce }:
     [previewHtml, activeDocumentNonce],
   );
   const beginRun = useCallback(async () => {
-    if (!publicId || previewHtml || status !== "authenticated" || run.current) return;
+    if (!publicId || previewHtml || run.current) return;
     const response = await fetch(`/api/game/${encodeURIComponent(publicId)}/runs`, { method: "POST" });
     if (response.ok) run.current = await response.json();
-  }, [publicId, previewHtml, status]);
+  }, [publicId, previewHtml]);
   useEffect(() => { beginRun().catch(() => undefined); }, [beginRun]);
   useEffect(() => {
     async function onMessage(event: MessageEvent<GameMessage>) {
