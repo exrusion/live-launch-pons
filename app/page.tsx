@@ -10,7 +10,7 @@ export default async function HomePage() {
   const games = await exploreGames();
   const featured = games[0];
 
-  return <main>
+  return <main className="home-page">
     <section className="hero-sky">
       <Image className="hero-character hero-character-left" src="/hero-robot-v2.png" alt="" width={696} height={544} priority aria-hidden="true" />
       <Image className="hero-character hero-character-right" src="/hero-mouse-v2.png" alt="" width={556} height={535} priority aria-hidden="true" />

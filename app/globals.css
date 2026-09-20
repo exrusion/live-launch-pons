@@ -1171,3 +1171,71 @@ h1, h2, h3 { text-wrap: balance; }
   .community-grid article { min-height: 164px; padding: 14px; }
   .final-cta { min-height: 118px; margin-inline: 12px; padding: 17px; }
 }
+
+/* One continuous cloudy game world across the entire homepage. */
+.home-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 8% 13%, rgba(100, 221, 255, .24), transparent 23%),
+    radial-gradient(circle at 91% 30%, rgba(105, 155, 255, .19), transparent 24%),
+    radial-gradient(circle at 16% 58%, rgba(168, 228, 255, .22), transparent 21%),
+    radial-gradient(circle at 83% 76%, rgba(129, 178, 255, .18), transparent 25%),
+    linear-gradient(180deg, #eff8ff 0%, #f4f9ff 47%, #edf7ff 100%);
+}
+.home-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: .33;
+  background-image: radial-gradient(#8fa7c6 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.home-page::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 220px 72px at 4% 39%, rgba(255,255,255,.67), transparent 72%),
+    radial-gradient(ellipse 260px 84px at 96% 52%, rgba(255,255,255,.7), transparent 72%),
+    radial-gradient(ellipse 240px 76px at 11% 83%, rgba(255,255,255,.52), transparent 72%),
+    radial-gradient(ellipse 200px 68px at 88% 94%, rgba(255,255,255,.58), transparent 72%);
+  filter: blur(8px);
+}
+.home-page .hero-sky,
+.home-page .featured-section,
+.home-page .product-section,
+.home-page .community-section {
+  background: transparent;
+}
+.home-page .hero-sky::after { display: none; }
+.home-page .flow-strip {
+  border-color: rgba(86, 119, 160, .12);
+  background: rgba(255,255,255,.64);
+  box-shadow: 0 12px 38px rgba(59, 91, 130, .045);
+  backdrop-filter: blur(14px);
+}
+.home-page .featured-grid,
+.home-page .feature-card,
+.home-page .community-grid article,
+.home-page .final-cta {
+  border-color: rgba(76, 120, 179, .1);
+  background: rgba(255,255,255,.72);
+  box-shadow: 0 16px 46px rgba(48, 84, 128, .08);
+  backdrop-filter: blur(16px);
+}
+.home-page .feature-card:nth-child(1),
+.home-page .feature-card:nth-child(2),
+.home-page .feature-card:nth-child(3),
+.home-page .community-grid article {
+  background: linear-gradient(145deg, rgba(255,255,255,.84), rgba(239,247,255,.72));
+}
+.home-page .final-cta {
+  background: linear-gradient(110deg, rgba(255,255,255,.84), rgba(231,242,255,.76));
+}
