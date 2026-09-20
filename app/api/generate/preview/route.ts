@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import { acquireAiGenerationLease } from "@/lib/ai-budget";
 import { aiConfigurationStatus, generateGameConfigWithAi } from "@/lib/ai-game-generator";
-import { auth } from "@/lib/auth";
+import { attachCreatorCookie, ensureCreator } from "@/lib/auth";
 import { createGameSchema, freezeGameVersion, gameConfigSchema, generateGameConfig } from "@/lib/game-generator";
 import { query } from "@/lib/db";
 import { issuePreviewToken, previewInputHash, PreviewTokenConfigurationError } from "@/lib/preview-token";
@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
     const input = createGameSchema.parse(await readJsonBody(request));
     // Complete local moderation/validation before reserving shared paid capacity.
     generateGameConfig(input);
-    const session = await auth();
+    const creator = await ensureCreator(request);
+    const session = creator.session;
     const aiStatus = aiConfigurationStatus();
     let generated: Awaited<ReturnType<typeof generateGameConfigWithAi>>;
     if (session?.user?.id && aiStatus.valid && aiStatus.config) {
@@ -116,10 +117,10 @@ export async function POST(request: NextRequest) {
         [generationJobId, frozen.manifestHash, config.generation!.provider, config.generation!.model, config.generation!.attempts, config.generation!.failureCode || null],
       );
     }
-    return NextResponse.json(
+    return attachCreatorCookie(NextResponse.json(
       { config, generation: config.generation, version, previewHtml, previewToken },
       { headers: { "Cache-Control": "no-store" } },
-    );
+    ), creator.cookie);
   } catch (error) {
     if (generationJobId) {
       await query(
