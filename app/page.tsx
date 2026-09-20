@@ -28,7 +28,7 @@ export default async function HomePage() {
     </section>
 
     <section className="flow-strip"><div className="shell flow-row">
-      {["Prompt", "Game", "Token", "Play", "Compete"].map((item, index) => <div key={item}><span>{String(index + 1).padStart(2, "0")}</span><b>{item}</b>{index < 4 && <em>→</em>}</div>)}
+      {["Prompt", "Game", "Token", "Play", "Complete"].map((item, index) => <div key={item}><span>{String(index + 1).padStart(2, "0")}</span><b>{item}</b>{index < 4 && <em>→</em>}</div>)}
     </div></section>
 
     {featured && <section className="featured-section"><div className="shell featured-grid">

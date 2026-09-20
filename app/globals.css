@@ -727,3 +727,87 @@ h1, h2, h3 { text-wrap: balance; }
   .wallet-option small { text-align: left; }
   .game-title-row h1, .title-line h1 { font-size: 30px; }
 }
+
+/* Compact launchpad chrome and animated product journey. */
+.header-inner { min-height: 66px; gap: 20px; }
+.logo { font-size: 15px; }
+.logo-mark { width: 34px; height: 34px; border-radius: 11px; }
+.site-nav { padding: 3px; }
+.site-nav a { padding: 6px 11px; font-size: 13px; }
+.header-actions { gap: 8px; }
+.header-actions .button-small,
+.header-actions .wallet-pill {
+  min-height: 38px;
+  border-radius: 999px;
+  padding-inline: 16px;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.header-actions .wallet-wrap > .button-quiet {
+  color: #fff;
+  background: #111713;
+  border-color: #111713;
+  box-shadow: 0 7px 18px rgba(16, 24, 40, .12);
+}
+.header-actions .wallet-wrap > .button-quiet:hover { color: #fff; background: #242b26; border-color: #242b26; }
+.header-actions > .button-primary { color: #1749bd; background: #e7efff; border: 1px solid #c9d9ff; }
+.header-actions > .button-primary:hover:not(:disabled) { color: #fff; background: #2f6bff; border-color: #2f6bff; }
+
+.flow-strip { overflow: hidden; }
+.flow-row { min-height: 76px; }
+.flow-row > div { isolation: isolate; }
+.flow-row > div b { animation: journey-step 6s ease-in-out infinite; animation-delay: calc((var(--flow-index, 0)) * 1.05s); }
+.flow-row > div:nth-child(1) { --flow-index: 0; }
+.flow-row > div:nth-child(2) { --flow-index: 1; }
+.flow-row > div:nth-child(3) { --flow-index: 2; }
+.flow-row > div:nth-child(4) { --flow-index: 3; }
+.flow-row > div:nth-child(5) { --flow-index: 4; }
+.flow-row > div span {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f0f3f8;
+  transition: color .3s ease, background .3s ease;
+  animation: journey-marker 6s ease-in-out infinite;
+  animation-delay: calc((var(--flow-index, 0)) * 1.05s);
+}
+.flow-row > div em { animation: journey-arrow 1.05s ease-in-out infinite; }
+
+@keyframes journey-step {
+  0%, 14%, 100% { color: #667085; }
+  5%, 10% { color: #2f6bff; }
+}
+@keyframes journey-marker {
+  0%, 14%, 100% { color: #667085; background: #f0f3f8; box-shadow: none; }
+  5%, 10% { color: #fff; background: #2f6bff; box-shadow: 0 0 0 6px rgba(47,107,255,.12); }
+}
+@keyframes journey-arrow {
+  0%, 100% { opacity: .35; transform: translateX(0); }
+  50% { opacity: 1; color: #2f6bff; transform: translateX(5px); }
+}
+
+.product-section { padding-block: 78px; }
+.product-section .section-intro { margin-bottom: 30px; }
+.product-section .section-intro h2 { font-size: clamp(38px, 4.4vw, 58px); }
+.feature-card { min-height: 342px; padding: 18px; border-radius: 22px; }
+.feature-card h3 { margin: 20px 0 7px; font-size: 20px; }
+.feature-card > p { font-size: 14px; line-height: 1.55; }
+.mini-stage { height: 164px; margin-top: 16px; }
+.token-orbit { height: 164px; margin-top: 16px; }
+.token-orbit span { width: 74px; height: 74px; border-radius: 23px; font-size: 32px; }
+.score-mini { height: 164px; margin-top: 16px; padding: 22px; }
+.score-mini b { font-size: 38px; }
+.score-mini span { margin-bottom: 12px; }
+
+@media (max-width: 740px) {
+  .header-inner { min-height: 62px; }
+  .logo-mark { width: 32px; height: 32px; }
+  .flow-row { min-height: 70px; }
+  .product-section { padding-block: 58px; }
+  .feature-card { min-height: 324px; }
+  .mini-stage, .token-orbit, .score-mini { height: 150px; }
+}
