@@ -19,7 +19,7 @@ export default async function HomePage() {
           <Link className="button button-primary" href="/create">Build a game <span>↗</span></Link>
           <Link className="button button-quiet" href="/explore">Enter the arcade</Link>
         </div>
-        <div className="signup-note"><span>Phase 1 launch credit</span><p>Sign in with X and verify your creator wallet to check eligibility.</p></div>
+        <div className="signup-note"><span>Wallet-owned publishing</span><p>Connect and verify your creator wallet when you are ready to launch.</p></div>
       </div>
       <div className="hero-console">
         <PromptHero />
@@ -55,6 +55,17 @@ export default async function HomePage() {
         <article className="feature-card accent-card"><span className="feature-number">01 · BUILD</span><div className="mini-stage"><i className="runner" /><i className="obstacle" /><i className="coin" /></div><h3>Shape the game</h3><p>Choose a runner, flappy-style challenge, or top-down shooter and tune it with one prompt.</p></article>
         <article className="feature-card"><span className="feature-number">02 · LAUNCH</span><div className="token-orbit"><span>$</span><i /><i /><i /></div><h3>Launch through pons</h3><p>Your wallet signs the official V2 factory call only after the playable version is frozen.</p></article>
         <article className="feature-card"><span className="feature-number">03 · COMPETE</span><div className="score-mini"><b>12,480</b><span>replay-checked score</span><i style={{ width: "82%" }} /><i style={{ width: "64%" }} /><i style={{ width: "46%" }} /></div><h3>Climb the board</h3><p>Server-backed runs keep the leaderboard competitive while every version remains playable.</p></article>
+      </div>
+    </section>
+
+    <section className="community-section shell">
+      <div className="section-intro">
+        <div><span className="eyebrow">Community-owned games</span><h2>The game can keep evolving after launch.</h2></div>
+        <p>These are the next release surfaces. They will only activate after verified holder snapshots and safe version publishing are enabled.</p>
+      </div>
+      <div className="community-grid">
+        <article><span>01 · HOLDER GOVERNANCE</span><h3>Vote on what ships next.</h3><p>Token holders will propose and vote on characters, maps, difficulty changes, and upgrades using verified on-chain snapshots.</p><div className="roadmap-tags"><b>Characters</b><b>Maps</b><b>Upgrades</b></div><small>Phase 2 · not active yet</small></article>
+        <article><span>02 · AI VERSIONING</span><h3>Publish a new playable version.</h3><p>Creators will describe an update, generate it with AI, test it, and publish it while every previous frozen version remains replayable.</p><div className="version-flow"><b>v1</b><i>→</i><b>AI draft</b><i>→</i><b>v2</b></div><small>Phase 2 · not active yet</small></article>
       </div>
     </section>
 
