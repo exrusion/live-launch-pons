@@ -43,7 +43,7 @@ export function WalletButton() {
     return (
       <div className="wallet-wrap">
         <button className="wallet-pill" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
-          <span className="wallet-dot" />{short(address)}
+          <span className={chainId === robinhoodChain.id ? "wallet-dot" : "wallet-dot warning"} />{short(address)}
         </button>
         {open && <div className="wallet-popover">
           <div><strong>{short(address)}</strong><small>{chainId === robinhoodChain.id ? "Robinhood Chain" : "Wrong network"}</small></div>

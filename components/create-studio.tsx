@@ -62,7 +62,7 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
       {[{ n: 1, t: "Token details" }, { n: 2, t: "Game direction" }, { n: 3, t: "Preview & save" }].map((item) => <button key={item.n} className={step === item.n ? "step active" : step > item.n ? "step complete" : "step"} onClick={() => setStep(item.n)}><span>{step > item.n ? "✓" : item.n}</span>{item.t}</button>)}
       <div className="security-note"><span>Isolated build</span><p>Your prompt becomes validated configuration, never unrestricted code.</p></div>
     </aside>
-    <main className="creator-workspace">
+    <section className="creator-workspace">
       {step === 1 && <section className="form-section"><div className="section-heading"><div><span>01</span><h2>Token details</h2></div><p>These fields are frozen into the launch metadata.</p></div>
         <div className="field-grid"><label><span>Game name</span><input value={input.name} onChange={(e) => update("name", e.target.value)} placeholder="Neon Burrow" maxLength={48} /></label><label><span>Token ticker</span><div className="prefixed-input"><b>$</b><input value={input.ticker} onChange={(e) => update("ticker", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} placeholder="BURROW" maxLength={10} /></div></label></div>
         <label><span>Token description</span><textarea value={input.description} onChange={(e) => update("description", e.target.value)} placeholder="A one-line reason to play and follow the project." maxLength={280} /><small>{input.description.length}/280</small></label>
@@ -83,6 +83,6 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
         <div className="launch-review"><div><h3>Ready to keep this version?</h3><p>Save it as an immutable draft, connect a verified wallet, then read the current pons cost before signing.</p></div><div className="review-actions"><button className="button button-quiet" disabled={busy} onClick={generate}>Regenerate</button><button className="button button-primary" disabled={!config || busy} onClick={saveDraft}>{status === "authenticated" ? busy ? "Saving…" : "Save draft & continue" : "Sign in with X to save"}</button></div></div>
       </section>}
       {error && step !== 3 && <p className="error-copy form-error">{error}</p>}
-    </main>
+    </section>
   </div>;
 }
