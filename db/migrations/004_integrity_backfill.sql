@@ -30,7 +30,3 @@ CREATE INDEX IF NOT EXISTS pons_launches_rebate_queue_idx
   WHERE rebate_status IN ('PENDING','SENDING');
 CREATE UNIQUE INDEX IF NOT EXISTS wallets_one_primary_per_user_idx
   ON wallets(user_id) WHERE is_primary=true;
-
-UPDATE pons_launches
-SET submitted_at=COALESCE(submitted_at,updated_at,created_at)
-WHERE status IN ('SUBMITTED','CONFIRMING') AND submitted_at IS NULL;
