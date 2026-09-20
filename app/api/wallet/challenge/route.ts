@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAddress, isAddress } from "viem";
-import { auth } from "@/lib/auth";
+import { attachCreatorCookie, ensureCreator } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { makeNonce, requireSameOrigin, safeError, sha256 } from "@/lib/security";
 
 export async function POST(request: NextRequest) {
   try {
     requireSameOrigin(request);
-    const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Sign in with X first." }, { status: 401 });
+    const creator = await ensureCreator(request);
+    const session = creator.session;
     const body = await request.json();
     if (!isAddress(body.address)) return NextResponse.json({ error: "Invalid wallet address." }, { status: 400 });
     const address = getAddress(body.address);
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       "INSERT INTO wallet_nonces(user_id,address_normalized,nonce_hash,domain,message,expires_at) VALUES($1,$2,$3,$4,$5,$6)",
       [session.user.id, address.toLowerCase(), sha256(nonce), domain, message, expiresAt],
     );
-    return NextResponse.json({ message, expiresAt: expiresAt.toISOString() }, { headers: { "Cache-Control": "no-store" } });
+    return attachCreatorCookie(NextResponse.json({ message, expiresAt: expiresAt.toISOString() }, { headers: { "Cache-Control": "no-store" } }), creator.cookie);
   } catch (error) {
     return NextResponse.json({ error: safeError(error) }, { status: 400 });
   }
