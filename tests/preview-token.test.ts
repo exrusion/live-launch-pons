@@ -112,3 +112,22 @@ test("tokens issued too far in the future fail closed", () => {
   const token = issuePreviewToken(parsed, identity, { now: ISSUED_AT + 301, secret: SECRET });
   assert.equal(errorCode(() => verifyPreviewToken(token, parsed, identity, { now: ISSUED_AT, secret: SECRET })), "INVALID");
 });
+
+test("AI generation provenance is covered by the signed config and manifest hashes", () => {
+  const parsed = createGameSchema.parse(input);
+  const config = generateGameConfig(parsed);
+  const aiConfig = {
+    ...config,
+    story: "An AI-directed story kept inside the trusted HTML5 runtime.",
+    generation: { mode: "ai" as const, provider: "gateway.example", model: "fast-code-model", version: "blueprint-v1" as const, attempts: 1, attemptedModels: ["fast-code-model"] },
+  };
+  const identity = versionIdentity(aiConfig);
+  const token = issuePreviewToken(parsed, identity, { now: ISSUED_AT, secret: SECRET });
+  verifyPreviewToken(token, parsed, identity, { now: ISSUED_AT + 1, secret: SECRET });
+
+  const changedModel = versionIdentity({
+    ...aiConfig,
+    generation: { ...aiConfig.generation, model: "fast-flash-model" },
+  });
+  assert.equal(errorCode(() => verifyPreviewToken(token, parsed, changedModel, { now: ISSUED_AT + 1, secret: SECRET })), "MISMATCH");
+});

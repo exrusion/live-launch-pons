@@ -19,11 +19,14 @@ export type CreateDraftPayload = {
   step: number;
 };
 
-type StoredCreateDraft = CreateDraftPayload & {
+type StoredCreateDraft = Omit<CreateDraftPayload, "config"> & {
+  config: GameConfig | Record<string, unknown> | null;
   version: typeof DRAFT_VERSION;
   updatedAt: number;
   expiresAt: number;
 };
+
+export type RestoredCreateDraft = CreateDraftPayload & { previewNeedsRegeneration: boolean };
 
 export type CreateDraftCommit = {
   indexedDb: boolean;
@@ -45,11 +48,12 @@ function isCreateGameInput(value: unknown): value is CreateGameInput {
 }
 
 function isGameConfig(value: unknown): value is GameConfig {
-  if (!isRecord(value) || !isRecord(value.palette) || !isRecord(value.character) || !isRecord(value.obstacle) || !isRecord(value.collectible)) return false;
+  if (!isRecord(value) || !isRecord(value.palette) || !isRecord(value.character) || !isRecord(value.obstacle) || !isRecord(value.collectible) || !isRecord(value.mechanics)) return false;
   const palette = value.palette;
   const character = value.character;
   const obstacle = value.obstacle;
   const collectible = value.collectible;
+  const mechanics = value.mechanics;
   return ["RUNNER", "FLAPPY", "SHOOTER"].includes(String(value.category))
     && ["title", "instructions", "story"].every((key) => typeof value[key] === "string")
     && ["arcade", "soft", "silent"].includes(String(value.soundStyle))
@@ -57,6 +61,32 @@ function isGameConfig(value: unknown): value is GameConfig {
     && typeof character.shape === "string" && typeof character.label === "string"
     && typeof obstacle.shape === "string" && typeof obstacle.label === "string"
     && typeof collectible.shape === "string" && typeof collectible.label === "string"
+    && ["EASY", "NORMAL", "HARD"].includes(String(value.difficulty))
+    && typeof value.speed === "number" && Number.isFinite(value.speed)
+    && typeof value.seed === "number" && Number.isFinite(value.seed)
+    && ["grid", "stars", "circuit", "waves"].includes(String(mechanics.worldPattern))
+    && ["runner", "orb", "ship", "bot"].includes(String(mechanics.playerForm))
+    && ["barrier", "spike", "drone", "meteor"].includes(String(mechanics.obstacleForm))
+    && ["shard", "star", "crystal", "neuron"].includes(String(mechanics.collectibleForm))
+    && ["gravity", "jumpPower", "spawnRate", "collectibleRate", "obstacleScale", "enemyAggression", "projectileSpeed"].every((key) => typeof mechanics[key] === "number" && Number.isFinite(mechanics[key]))
+    && (value.generation === undefined || (
+      isRecord(value.generation)
+      && ["ai", "deterministic", "fallback"].includes(String(value.generation.mode))
+      && typeof value.generation.provider === "string"
+      && typeof value.generation.model === "string"
+      && value.generation.version === "blueprint-v1"
+      && typeof value.generation.attempts === "number" && Number.isSafeInteger(value.generation.attempts)
+      && Array.isArray(value.generation.attemptedModels) && value.generation.attemptedModels.every((model) => typeof model === "string")
+      && (value.generation.failureCode === undefined || typeof value.generation.failureCode === "string")
+      && (value.generation.jobId === undefined || typeof value.generation.jobId === "string")
+    ));
+}
+
+function isLegacyGameConfig(value: unknown): value is Record<string, unknown> {
+  if (!isRecord(value) || value.mechanics !== undefined || !isRecord(value.palette) || !isRecord(value.character) || !isRecord(value.obstacle) || !isRecord(value.collectible)) return false;
+  return ["RUNNER", "FLAPPY", "SHOOTER"].includes(String(value.category))
+    && ["title", "instructions", "story"].every((key) => typeof value[key] === "string")
+    && ["arcade", "soft", "silent"].includes(String(value.soundStyle))
     && ["EASY", "NORMAL", "HARD"].includes(String(value.difficulty))
     && typeof value.speed === "number" && Number.isFinite(value.speed)
     && typeof value.seed === "number" && Number.isFinite(value.seed);
@@ -72,7 +102,7 @@ function isStoredCreateDraft(value: unknown): value is StoredCreateDraft {
     && typeof value.previewHtml === "string"
     && typeof value.step === "number" && Number.isFinite(value.step)
     && isCreateGameInput(value.input)
-    && (value.config === null || isGameConfig(value.config))
+    && (value.config === null || isGameConfig(value.config) || isLegacyGameConfig(value.config))
     && ((value.config === null && value.previewToken === "" && value.previewHtml === "")
       || (value.config !== null && value.previewToken !== "" && value.previewHtml !== ""));
 }
@@ -312,7 +342,7 @@ export async function persistCreateDraft(draftId: string, payload: CreateDraftPa
   return { indexedDb, localStorage };
 }
 
-export async function restoreCreateDraft(draftId: string): Promise<CreateDraftPayload | null> {
+export async function restoreCreateDraft(draftId: string): Promise<RestoredCreateDraft | null> {
   const now = Date.now();
   purgeStaleLocalStorage(now);
   void purgeStaleIndexedDb(now).catch(() => undefined);
@@ -329,13 +359,15 @@ export async function restoreCreateDraft(draftId: string): Promise<CreateDraftPa
 
   const restored = localDraft || indexedDraft;
   if (!restored) return null;
+  const previewNeedsRegeneration = restored.config !== null && !isGameConfig(restored.config);
   return {
     input: restored.input,
     imageDataUrl: restored.imageDataUrl,
-    config: restored.config,
-    previewToken: restored.previewToken,
-    previewHtml: restored.previewHtml,
-    step: restored.step,
+    config: previewNeedsRegeneration ? null : restored.config as GameConfig | null,
+    previewToken: previewNeedsRegeneration ? "" : restored.previewToken,
+    previewHtml: previewNeedsRegeneration ? "" : restored.previewHtml,
+    step: previewNeedsRegeneration ? Math.min(2, restored.step) : restored.step,
+    previewNeedsRegeneration,
   };
 }
 

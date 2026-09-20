@@ -14,6 +14,19 @@ export const demoConfig: GameConfig = {
   speed: 1,
   soundStyle: "arcade",
   seed: 7331,
+  mechanics: {
+    worldPattern: "circuit",
+    playerForm: "runner",
+    obstacleForm: "drone",
+    collectibleForm: "neuron",
+    gravity: 1,
+    jumpPower: 1,
+    spawnRate: 1,
+    collectibleRate: 1,
+    obstacleScale: 1,
+    enemyAggression: 1,
+    projectileSpeed: 1,
+  },
 };
 
 export type ExploreGame = {

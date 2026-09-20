@@ -20,7 +20,7 @@ const categories = [
   { value: "SHOOTER", title: "Top-down shooter", copy: "Move, aim, and survive." },
 ] as const;
 
-export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; cspNonce: string }) {
+export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?: string; cspNonce: string }) {
   const router = useRouter();
   const { status } = useSession();
   const [input, setInput] = useState<CreateGameInput>({ name: "", ticker: "", description: "", prompt: initialPrompt, category: "RUNNER", visualStyle: "Neon arcade", difficulty: "NORMAL", developerBuyEth: "0", xUrl: "", websiteUrl: "" });
@@ -69,7 +69,9 @@ export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; c
         setPreviewToken(draft.previewToken);
         setPreviewHtml(draft.previewHtml);
         setStep(Math.min(3, Math.max(1, Math.trunc(draft.step))));
-        setRestoreNotice("Restored your saved game draft. You can continue where you left off.");
+        setRestoreNotice(draft.previewNeedsRegeneration
+          ? "Restored your game details and image. Rebuild the preview once to upgrade it to the current runtime."
+          : "Restored your saved game draft. You can continue where you left off.");
       } finally {
         if (!cancelled) setDraftHydrated(true);
       }
@@ -178,7 +180,16 @@ export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; c
       if (!body.previewHtml || typeof body.previewHtml !== "string") throw new Error("Playable preview output was missing. Generate it again.");
       if (!body.config || typeof body.config !== "object") throw new Error("Game configuration was missing. Generate it again.");
       if (generationRevision !== generationRevisionRef.current) return;
-      setConfig(body.config); setPreviewToken(body.previewToken); setPreviewHtml(body.previewHtml); setStep(3); setNotice("Playable preview ready. Test it before saving.");
+      const generatedConfig = body.config as GameConfig;
+      const mode = generatedConfig.generation?.mode;
+      setConfig(generatedConfig); setPreviewToken(body.previewToken); setPreviewHtml(body.previewHtml); setStep(3);
+      setNotice(mode === "ai"
+        ? "AI-directed playable preview ready. Test it before saving."
+        : mode === "fallback"
+          ? "The AI service was temporarily unavailable, so a safe playable fallback was built instead."
+          : status === "authenticated"
+            ? "Playable template ready. AI capacity is temporarily unavailable, so this build stayed local."
+            : "Playable template ready. Sign in with X and regenerate to use AI game direction.");
     } catch (cause) { if (generationRevision === generationRevisionRef.current) setError(cause instanceof Error ? cause.message : "Generation failed"); }
     finally { setBusy(false); }
   }
@@ -213,7 +224,7 @@ export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; c
     if (!imageDataUrl) { setError("Add a token image before saving the launch draft."); setStep(1); return; }
     setBusy(true); setError("");
     try {
-      const response = await fetch("/api/games", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input, imageDataUrl, previewToken }) });
+      const response = await fetch("/api/games", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input, config, imageDataUrl, previewToken }) });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Could not save draft");
       draftClearedRef.current = true;
@@ -243,7 +254,7 @@ export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; c
     <aside className="creator-steps">
       <div className="eyebrow">New game</div><h1>Build the first playable version.</h1>
       {[{ n: 1, t: "Token details" }, { n: 2, t: "Game direction" }, { n: 3, t: "Preview & save" }].map((item) => <button key={item.n} className={step === item.n ? "step active" : step > item.n ? "step complete" : "step"} aria-current={step === item.n ? "step" : undefined} onClick={() => goToStep(item.n)}><span>{step > item.n ? "✓" : item.n}</span>{item.t}</button>)}
-      <div className="security-note"><span>Isolated build</span><p>Your prompt becomes validated configuration, never unrestricted code.</p></div>
+      <div className="security-note"><span>Isolated AI build</span><p>AI directs a validated blueprint while the executable runtime stays sandboxed.</p></div>
     </aside>
     <section className="creator-workspace">
       {restoreNotice && <p className="success-copy" role="status" aria-live="polite">{restoreNotice}</p>}
@@ -262,7 +273,7 @@ export function CreateStudio({ initialPrompt = "" }: { initialPrompt?: string; c
         <div className="form-footer"><button className="text-button" onClick={() => goToStep(1)}>← Back</button><button className="button button-primary" disabled={busy || imageReading} onClick={generate}>{busy ? "Building preview…" : imageReading ? "Processing image…" : "Generate playable preview ↗"}</button></div>
       </section>}
       {step === 3 && <section className="preview-section"><div className="section-heading"><div><span>03</span><h2>Test the build</h2></div><p>Nothing is on-chain yet.</p></div>
-        {config && previewHtml ? <><GameFrame title={config.title} previewHtml={previewHtml} /><div className="preview-meta"><div><span>Engine</span><b>{config.category.toLowerCase()}</b></div><div><span>Difficulty</span><b>{config.difficulty.toLowerCase()}</b></div><div><span>Runtime</span><b>v2 · sandboxed</b></div><div><span>Controls</span><b>keyboard + touch</b></div></div></> : <div className="empty-preview"><span>◫</span><h3>No preview yet</h3><p>Describe the game and generate its first build.</p><button className="button button-quiet" onClick={() => goToStep(2)}>Go to game direction</button></div>}
+        {config && previewHtml ? <><GameFrame title={config.title} previewHtml={previewHtml} cspNonce={cspNonce} /><div className="preview-meta"><div><span>Engine</span><b>{config.category.toLowerCase()}</b></div><div><span>Difficulty</span><b>{config.difficulty.toLowerCase()}</b></div><div><span>Generation</span><b>{config.generation?.mode === "ai" ? `AI · ${config.generation.model}` : config.generation?.mode === "fallback" ? "safe fallback" : "template"}</b></div><div><span>Runtime</span><b>v3 · sandboxed</b></div></div></> : <div className="empty-preview"><span>◫</span><h3>No preview yet</h3><p>Describe the game and generate its first build.</p><button className="button button-quiet" onClick={() => goToStep(2)}>Go to game direction</button></div>}
         {notice && <p className="success-copy" role="status">{notice}</p>}{error && <p className="error-copy" role="alert">{error}</p>}
         <div className="launch-review"><div><h3>Ready to keep this version?</h3><p>Save it as an immutable draft, connect a verified wallet, then read the current pons cost before signing.</p></div><div className="review-actions"><button className="button button-quiet" disabled={busy || imageReading} onClick={generate}>Regenerate</button><button className="button button-primary" disabled={!config || !previewToken || !previewHtml || busy || authBusy || imageReading || status === "loading"} onClick={saveDraft}>{imageReading ? "Processing image…" : status === "loading" ? "Checking X…" : status === "authenticated" ? busy ? "Saving…" : "Save draft & continue" : authBusy ? "Opening X…" : "Sign in with X to save"}</button></div></div>
       </section>}

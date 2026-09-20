@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { transaction } from "@/lib/db";
-import { validateReplay, type ReplayEvent } from "@/lib/scores";
+import { REPLAY_VALIDATOR_VERSION, validateReplay, type ReplayEvent } from "@/lib/scores";
 import { requireSameOrigin, safeError, sha256 } from "@/lib/security";
 import type { GameCategory, GameConfig } from "@/lib/types";
 
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         seedHash: run.server_seed_hash,
         speed: run.config.speed,
         difficulty: run.config.difficulty,
+        mechanics: run.config.mechanics,
       });
       const replayHash = validation.valid ? validation.replayHash! : sha256(JSON.stringify(body.events || []));
       const score = await client.query<{ id: string }>(
@@ -46,8 +47,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       );
       await client.query(
         `INSERT INTO score_replays(score_id,event_log,seed_hash,duration_ms,replay_hash,validator_version)
-         VALUES($1,$2::jsonb,$3,$4,$5,'heuristic-replay-v1')`,
-        [score.rows[0].id, JSON.stringify(body.events || []), run.server_seed_hash, body.durationMs, replayHash],
+         VALUES($1,$2::jsonb,$3,$4,$5,$6)`,
+        [score.rows[0].id, JSON.stringify(body.events || []), run.server_seed_hash, body.durationMs, replayHash, REPLAY_VALIDATOR_VERSION],
       );
       await client.query("UPDATE run_sessions SET consumed_at=now() WHERE id=$1", [id]);
       return { scoreId: score.rows[0].id, status: validation.valid ? "VALID" : "REJECTED", reason: validation.reason };

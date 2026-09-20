@@ -1,7 +1,8 @@
 import { canonicalJson, sha256 } from "@/lib/security";
-import type { GameCategory } from "@/lib/types";
+import type { GameCategory, GameMechanics } from "@/lib/types";
 
 export type ReplayEvent = { t: number; type: string; x?: number; y?: number };
+export const REPLAY_VALIDATOR_VERSION = "heuristic-replay-v2";
 
 export function validateReplay(input: {
   category: GameCategory;
@@ -11,6 +12,7 @@ export function validateReplay(input: {
   seedHash: string;
   speed?: number;
   difficulty?: "EASY" | "NORMAL" | "HARD";
+  mechanics?: GameMechanics;
 }) {
   if (!Number.isSafeInteger(input.score) || input.score < 0) return { valid: false, reason: "INVALID_SCORE" };
   if (!Number.isSafeInteger(input.durationMs) || input.durationMs < 500 || input.durationMs > 60 * 60 * 1000) return { valid: false, reason: "INVALID_DURATION" };
@@ -47,25 +49,37 @@ export function validateReplay(input: {
   }
   let computedScore = 0;
   let tolerance = 0;
+  const difficulty = input.difficulty === "HARD" ? 1.22 : input.difficulty === "EASY" ? 0.84 : 1;
+  const pace = (input.speed ?? 1) * difficulty;
   if (input.category === "RUNNER") {
     const collects = input.events.filter((event) => event.type === "collect");
-    if (collects.length > Math.ceil(input.durationMs / 300) + 1) return { valid: false, reason: "COLLECT_RATE_EXCEEDED" };
-    for (let index = 1; index < collects.length; index += 1) if (collects[index].t - collects[index - 1].t < 250) return { valid: false, reason: "COLLECT_RATE_EXCEEDED" };
-    const difficulty = input.difficulty === "HARD" ? 1.22 : input.difficulty === "EASY" ? 0.84 : 1;
-    const pace = (input.speed ?? 1) * difficulty;
+    const earliestCollectMs = 500 + (842 / (420 * pace)) * 1_000 - 80;
+    if (collects[0] && collects[0].t < earliestCollectMs) return { valid: false, reason: "COLLECT_BEFORE_SPAWN" };
+    const collectibleRate = input.mechanics?.collectibleRate ?? 1;
+    const minimumSpawnMs = 550 / (pace * collectibleRate);
+    if (collects.length > Math.ceil(input.durationMs / minimumSpawnMs) + 2) return { valid: false, reason: "COLLECT_RATE_EXCEEDED" };
+    const minimumCollectSpacing = Math.max(70, Math.floor(minimumSpawnMs - 50));
+    for (let index = 1; index < collects.length; index += 1) if (collects[index].t - collects[index - 1].t < minimumCollectSpacing) return { valid: false, reason: "COLLECT_RATE_EXCEEDED" };
     computedScore = Math.floor((input.durationMs * pace) / 10) + collects.length * 25;
     tolerance = 5;
   } else if (input.category === "FLAPPY") {
     const gates = input.events.filter((event) => event.type === "gate");
-    if (gates.length > Math.ceil(input.durationMs / 650) + 1) return { valid: false, reason: "GATE_RATE_EXCEEDED" };
-    for (let index = 1; index < gates.length; index += 1) if (gates[index].t - gates[index - 1].t < 600) return { valid: false, reason: "GATE_RATE_EXCEEDED" };
+    const earliestGateMs = (870 / (330 * pace)) * 1_000 - 80;
+    if (gates[0] && gates[0].t < earliestGateMs) return { valid: false, reason: "GATE_BEFORE_ARRIVAL" };
+    const spawnRate = input.mechanics?.spawnRate ?? 1;
+    const minimumSpawnMs = 1_300 / (pace * spawnRate);
+    if (gates.length > Math.ceil(input.durationMs / minimumSpawnMs) + 2) return { valid: false, reason: "GATE_RATE_EXCEEDED" };
+    const minimumGateSpacing = Math.max(120, Math.floor(minimumSpawnMs - 60));
+    for (let index = 1; index < gates.length; index += 1) if (gates[index].t - gates[index - 1].t < minimumGateSpacing) return { valid: false, reason: "GATE_RATE_EXCEEDED" };
     computedScore = gates.length * 100;
   } else {
     const fires = input.events.filter((event) => event.type === "fire");
     const hits = input.events.filter((event) => event.type === "hit");
     if (hits.length > fires.length) return { valid: false, reason: "HIT_WITHOUT_FIRE" };
-    if (hits.length > Math.ceil(input.durationMs / 280) + 1) return { valid: false, reason: "HIT_RATE_EXCEEDED" };
-    for (let index = 1; index < hits.length; index += 1) if (hits[index].t - hits[index - 1].t < 240) return { valid: false, reason: "HIT_RATE_EXCEEDED" };
+    if (hits[0] && hits[0].t < 250) return { valid: false, reason: "HIT_BEFORE_ARRIVAL" };
+    const spawnRate = input.mechanics?.spawnRate ?? 1;
+    const minimumSpawnMs = 460 / (pace * spawnRate);
+    if (hits.length > Math.ceil(input.durationMs / minimumSpawnMs) + 2) return { valid: false, reason: "HIT_RATE_EXCEEDED" };
     const availableShots = [...fires];
     for (const hit of hits) {
       const shotIndex = availableShots.findIndex((shot) => shot.t <= hit.t && hit.t - shot.t <= 2_500);

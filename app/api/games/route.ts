@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseEther } from "viem";
 import { ZodError } from "zod";
 import { auth } from "@/lib/auth";
-import { createGameSchema, freezeGameVersion, generateGameConfig } from "@/lib/game-generator";
+import { createGameSchema, freezeGameVersion, generateGameConfig, validateGameConfigForInput } from "@/lib/game-generator";
 import { previewInputHash, PreviewTokenConfigurationError, PreviewTokenError, verifyPreviewToken } from "@/lib/preview-token";
 import { hashIp, requestIp, requireSameOrigin, sha256, slugify } from "@/lib/security";
 import { transaction } from "@/lib/db";
 import { saveTokenImage } from "@/lib/assets";
 import { checkRateLimit } from "@/lib/rate-limit";
+import type { GameGenerationMetadata } from "@/lib/types";
 
 const IMAGE_ERROR_MESSAGES: Record<string, string> = {
   INVALID_IMAGE_DATA: "Use a valid PNG, JPEG, or WebP image.",
@@ -42,16 +43,26 @@ export async function POST(request: NextRequest) {
     if (!rawBody || typeof rawBody !== "object" || Array.isArray(rawBody)) {
       return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
     }
-    const body = rawBody as { input?: unknown; previewToken?: unknown; imageDataUrl?: unknown };
+    const body = rawBody as { input?: unknown; config?: unknown; previewToken?: unknown; imageDataUrl?: unknown };
     const input = createGameSchema.parse(body.input);
     if (typeof body.previewToken !== "string" || !body.previewToken) {
       return NextResponse.json({ error: "Generate a fresh preview before saving." }, { status: 400 });
     }
     const imageDataUrl = body.imageDataUrl;
     if (typeof imageDataUrl !== "string" || !imageDataUrl) return NextResponse.json({ error: "A PNG, JPEG, or WebP token image is required." }, { status: 400 });
-    const config = generateGameConfig(input);
+    const config = body.config === undefined
+      ? generateGameConfig(input)
+      : validateGameConfigForInput(input, body.config);
     const frozen = freezeGameVersion(config);
     verifyPreviewToken(body.previewToken, input, frozen);
+    const generation: GameGenerationMetadata = config.generation || {
+      mode: "deterministic" as const,
+      provider: "pons",
+      model: frozen.runtimeVersion,
+      version: "blueprint-v1" as const,
+      attempts: 0,
+      attemptedModels: [],
+    };
     const developerBuyEth = input.developerBuyEth || "0";
     if (developerBuyEth.length > 32 || !/^\d+(?:\.\d{0,6})?$/.test(developerBuyEth)) {
       return NextResponse.json({ error: "Enter a valid developer buy amount." }, { status: 400 });
@@ -67,11 +78,19 @@ export async function POST(request: NextRequest) {
       );
       const gameId = game.rows[0].id;
       const imageId = await saveTokenImage(client, { userId: session.user!.id, gameId, dataUrl: imageDataUrl });
-      const job = await client.query<{ id: string }>(
-        `INSERT INTO generation_jobs(user_id,game_id,status,progress,input_hash,output_hash,provider,model,attempts)
-         VALUES($1,$2,'SUCCEEDED',100,$3,$4,'deterministic-template',$5,1) RETURNING id`,
-        [session.user!.id, gameId, previewInputHash(input), frozen.manifestHash, frozen.runtimeVersion],
-      );
+      const job = generation.jobId
+        ? await client.query<{ id: string }>(
+            `UPDATE generation_jobs SET game_id=$2,updated_at=now()
+             WHERE id=$1 AND user_id=$3 AND game_id IS NULL AND status='SUCCEEDED' AND input_hash=$4 AND output_hash=$5
+             RETURNING id`,
+            [generation.jobId, gameId, session.user!.id, previewInputHash(input), frozen.manifestHash],
+          )
+        : await client.query<{ id: string }>(
+            `INSERT INTO generation_jobs(user_id,game_id,status,progress,input_hash,output_hash,provider,model,attempts,error_code)
+             VALUES($1,$2,'SUCCEEDED',100,$3,$4,$5,$6,$7,$8) RETURNING id`,
+            [session.user!.id, gameId, previewInputHash(input), frozen.manifestHash, generation.provider, generation.model, generation.attempts, generation.failureCode || null],
+          );
+      if (!job.rows[0]) throw new Error("GENERATION_JOB_NOT_AVAILABLE");
       await client.query(
         `INSERT INTO game_drafts(game_id,revision,prompt,config,generation_job_id) VALUES($1,1,$2,$3::jsonb,$4)`,
         [gameId, input.prompt, frozen.configJson, job.rows[0].id],
@@ -104,6 +123,12 @@ export async function POST(request: NextRequest) {
     }
     if (error instanceof ZodError) {
       return NextResponse.json({ error: "Check the game details and try again." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "GENERATED_CONFIG_MISMATCH") {
+      return NextResponse.json({ error: "The generated game no longer matches these details. Generate a fresh preview." }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "GENERATION_JOB_NOT_AVAILABLE") {
+      return NextResponse.json({ error: "This preview was already saved or is no longer available. Generate a fresh preview." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "INVALID_ORIGIN") {
       return NextResponse.json({ error: "Request origin not allowed." }, { status: 403 });

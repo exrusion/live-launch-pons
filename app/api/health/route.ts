@@ -3,6 +3,8 @@ import { databaseReady, serviceHeartbeatReady } from "@/lib/db";
 import { probePonsInfrastructure } from "@/lib/pons";
 import { hasSponsorRebateConfig } from "@/lib/rebates";
 import { hasRedis, redisReady, workerHeartbeatReady } from "@/lib/redis";
+import { aiConfigurationStatus } from "@/lib/ai-game-generator";
+import { aiBudgetConfigurationStatus } from "@/lib/ai-budget";
 
 export const dynamic = "force-dynamic";
 
@@ -49,8 +51,12 @@ export async function GET() {
   const ready = live && worker;
   const ponsLaunchConfigured = process.env.PONS_LAUNCH_ENABLED === "true";
   const sponsorRebateConfigured = hasSponsorRebateConfig();
+  const aiStatus = aiConfigurationStatus();
+  const aiBudgetStatus = aiBudgetConfigurationStatus();
+  const aiReady = aiStatus.configured && aiStatus.valid && aiBudgetStatus.valid && redisConfigured && redis === true;
   const healthy = ready && infrastructure.chainRpc && infrastructure.ponsFactory &&
-    (!ponsLaunchConfigured || infrastructure.ponsLaunchEnabled) && (!redisConfigured || redis);
+    (!ponsLaunchConfigured || infrastructure.ponsLaunchEnabled) && (!redisConfigured || redis) &&
+    (!aiStatus.configured || aiReady);
   return NextResponse.json(
     {
       status: healthy ? "ok" : "degraded",
@@ -66,6 +72,11 @@ export async function GET() {
       workerDatabase,
       workerRedis,
       xAuth: Boolean(process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET),
+      aiConfigured: aiStatus.configured,
+      aiConfigValid: aiStatus.valid,
+      aiBudgetConfigValid: aiBudgetStatus.valid,
+      aiReady,
+      aiModel: aiStatus.model,
       ponsLaunch: ponsLaunchConfigured,
       freeLaunchRebate: sponsorRebateConfigured,
       freeLaunchRebateEnabled: process.env.FREE_LAUNCH_REBATE_ENABLED === "true",
@@ -76,6 +87,6 @@ export async function GET() {
       ponsLaunchEnabled: infrastructure.ponsLaunchEnabled,
       time: new Date().toISOString(),
     },
-    { status: live ? 200 : 503, headers: { "Cache-Control": "no-store" } },
+    { status: healthy ? 200 : 503, headers: { "Cache-Control": "no-store" } },
   );
 }

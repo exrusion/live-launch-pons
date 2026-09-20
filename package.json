@@ -8,7 +8,7 @@
     "start": "next start -p ${PORT:-3000}",
     "migrate": "node scripts/migrate.mjs",
     "seed": "node scripts/seed.mjs",
-    "deploy:prepare": "node scripts/prepare-deploy.mjs",
+    "deploy:prepare": "node --import tsx scripts/prepare-deploy.mjs",
     "worker": "tsx worker/index.ts",
     "check": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts"

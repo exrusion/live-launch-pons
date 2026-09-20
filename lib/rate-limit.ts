@@ -16,6 +16,14 @@ return { count, ttl }
 
 function memoryRateLimit(digest: string, limit: number, windowSeconds: number) {
   const now = Date.now();
+  if (buckets.size >= 5_000) {
+    for (const [bucketKey, value] of buckets) if (value.resetAt <= now) buckets.delete(bucketKey);
+    while (buckets.size >= 5_000) {
+      const oldestKey = buckets.keys().next().value as string | undefined;
+      if (!oldestKey) break;
+      buckets.delete(oldestKey);
+    }
+  }
   const existing = buckets.get(digest);
   if (!existing || existing.resetAt <= now) {
     const resetAt = now + windowSeconds * 1_000;
@@ -23,9 +31,6 @@ function memoryRateLimit(digest: string, limit: number, windowSeconds: number) {
     return { allowed: true, remaining: Math.max(0, limit - 1), resetAt };
   }
   existing.count += 1;
-  if (buckets.size > 5_000) {
-    for (const [bucketKey, value] of buckets) if (value.resetAt <= now) buckets.delete(bucketKey);
-  }
   return {
     allowed: existing.count <= limit,
     remaining: Math.max(0, limit - existing.count),

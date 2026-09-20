@@ -10,11 +10,12 @@ export async function GET(_: Request, context: { params: Promise<{ versionId: st
   const session = await auth();
   const version = await gameVersion(versionId, session?.user?.id);
   if (!version) return new NextResponse("Game version not found", { status: 404 });
+  const persistedArtifact = Boolean(version.document_html);
   const html = version.document_html ?? buildFrozenGameDocument(version.config);
   return new NextResponse(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": session?.user?.id ? "private, no-store" : "public, max-age=31536000, immutable",
+      "Cache-Control": session?.user?.id || !persistedArtifact ? "private, no-store" : "public, max-age=31536000, immutable",
       "Content-Security-Policy": gameDocumentContentSecurityPolicy(),
       "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
       "Cross-Origin-Resource-Policy": "same-origin",
