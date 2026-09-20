@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { useAccount, useConnect, useDisconnect, useSignMessage, useSwitchChain } from "wagmi";
 import { robinhoodChain } from "@/lib/chain";
 
@@ -10,7 +9,6 @@ function short(value: string) {
 }
 
 export function WalletButton() {
-  const { data: session } = useSession();
   const { address, isConnected, chainId } = useAccount();
   const { connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
@@ -23,7 +21,7 @@ export function WalletButton() {
   const hasWalletConnectConnector = connectors.some((connector) => connector.name.includes("WalletConnect"));
 
   async function verify() {
-    if (!address || !session) return;
+    if (!address) return;
     setBusy(true); setError("");
     try {
       if (chainId !== robinhoodChain.id) await switchChainAsync({ chainId: robinhoodChain.id });
@@ -48,9 +46,8 @@ export function WalletButton() {
         </button>
         {open && <div className="wallet-popover">
           <div><strong>{short(address)}</strong><small>{chainId === robinhoodChain.id ? "Robinhood Chain" : "Wrong network"}</small></div>
-          {session && !verified && <button className="button button-primary button-small" onClick={verify} disabled={busy}>{busy ? "Check wallet…" : "Verify wallet"}</button>}
+          {!verified && <button className="button button-primary button-small" onClick={verify} disabled={busy}>{busy ? "Check wallet…" : "Verify wallet"}</button>}
           {verified && <p className="success-copy">Wallet verified for this session.</p>}
-          {!session && <p className="muted-copy">Sign in with X to link this wallet.</p>}
           {error && <p className="error-copy">{error}</p>}
           <button className="text-button" onClick={() => disconnect()}>Disconnect</button>
         </div>}
