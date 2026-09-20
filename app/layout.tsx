@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "@fontsource-variable/inter";
+import "@fontsource/instrument-serif";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Header } from "@/components/header";

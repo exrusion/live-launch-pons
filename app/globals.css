@@ -706,6 +706,22 @@ h1, h2, h3 { text-wrap: balance; }
 .community-grid h3, .feature-card h3, .featured-copy h2,
 .final-cta h2 { font-weight: 700; }
 
+/* Pons Launchpad display face: editorial serif for statement headings only. */
+.hero h1,
+.game-title-row h1,
+.title-line h1,
+.section-heading h2,
+.page-heading h1,
+.section-intro h2,
+.community-grid h3,
+.featured-copy h2,
+.final-cta h2,
+.docs-content > h1 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -.035em;
+}
+
 @media (max-width: 430px) {
   .wallet-option { grid-template-columns: 1fr; gap: 4px; }
   .wallet-option small { text-align: left; }
