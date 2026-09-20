@@ -143,8 +143,20 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message === "REQUEST_TIMEOUT") {
       return NextResponse.json({ error: "Request body timed out." }, { status: 408 });
     }
-    if (error instanceof ZodError || (error instanceof Error && error.message.startsWith("Prompt rejected:"))) {
-      return NextResponse.json({ error: "Check the game details and try again." }, { status: 400 });
+    if (error instanceof ZodError) {
+      const field = String(error.issues[0]?.path[0] || "details");
+      const messages: Record<string, string> = {
+        name: "Enter a game name with at least 2 characters.",
+        ticker: "Enter a token ticker using 2–10 letters or numbers.",
+        description: "Add a token description with at least 8 characters.",
+        prompt: "Describe the game in at least 15 characters.",
+        xUrl: "Enter a valid X link, or leave it blank.",
+        websiteUrl: "Enter a valid website link, or leave it blank.",
+      };
+      return NextResponse.json({ error: messages[field] || "Check the game details and try again." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message.startsWith("Prompt rejected:")) {
+      return NextResponse.json({ error: "Adjust the game description and remove unsafe or executable instructions." }, { status: 400 });
     }
     console.error("preview_generation_failed", { errorClass: error instanceof Error ? error.constructor.name : "UnknownError" });
     return NextResponse.json({ error: "Could not generate the preview right now. Try again." }, { status: 500 });
