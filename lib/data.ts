@@ -43,6 +43,33 @@ export type ExploreGame = {
   players: number;
 };
 
+export type PlatformPulse = {
+  newGames: number;
+  playableBuilds: number;
+  verifiedRuns: number;
+};
+
+const EMPTY_PLATFORM_PULSE: PlatformPulse = {
+  newGames: 0,
+  playableBuilds: 0,
+  verifiedRuns: 0,
+};
+
+export async function platformPulse(): Promise<PlatformPulse> {
+  if (!hasDatabase()) return EMPTY_PLATFORM_PULSE;
+  try {
+    const result = await query<PlatformPulse>(
+      `SELECT
+        (SELECT count(*)::int FROM games WHERE created_at >= now() - interval '24 hours') AS "newGames",
+        (SELECT count(*)::int FROM game_versions WHERE created_at >= now() - interval '24 hours') AS "playableBuilds",
+        (SELECT count(*)::int FROM scores WHERE submitted_at >= now() - interval '24 hours' AND validation_status='VALID') AS "verifiedRuns"`,
+    );
+    return result.rows[0] || EMPTY_PLATFORM_PULSE;
+  } catch {
+    return EMPTY_PLATFORM_PULSE;
+  }
+}
+
 export async function exploreGames(): Promise<ExploreGame[]> {
   if (!hasDatabase()) return [{ id: "demo", slug: "neon-burrow-demo", name: "Neon Burrow", ticker: "BURROW", description: "Race through a collapsing cyber lab and collect neurons.", category: "RUNNER", status: "DEMO", versionId: "demo", tokenAddress: null, imageId: null, players: 0 }];
   const result = await query<ExploreGame>(

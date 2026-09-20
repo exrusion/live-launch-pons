@@ -15,7 +15,7 @@ function appConfig(appUrl: string) {
     ...(walletConnectId ? [walletConnect({
       projectId: walletConnectId,
       metadata: {
-        name: "pons game studio",
+        name: "gamepad.markets",
         description: "Create and play token-powered games",
         url: origin,
         icons: [`${origin}/favicon.svg`],

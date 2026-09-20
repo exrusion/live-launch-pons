@@ -8,12 +8,12 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
-  title: { default: "pons game studio", template: "%s · pons game studio" },
-  description: "Describe a game, generate a playable HTML5 build, and launch its token through pons on Robinhood Chain.",
+  title: { default: "gamepad.markets", template: "%s · gamepad.markets" },
+  description: "Create a playable game, launch its token through pons, and let the market play on Robinhood Chain.",
   icons: { icon: "/favicon.svg" },
 };
 
-const RAILWAY_ORIGIN = "https://pons-game-studio-web-production.up.railway.app";
+const RAILWAY_ORIGIN = "https://gamepad.markets";
 
 function configuredAppOrigin() {
   try {

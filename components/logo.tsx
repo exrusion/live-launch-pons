@@ -2,9 +2,9 @@ import Link from "next/link";
 
 export function Logo() {
   return (
-    <Link href="/" className="logo" aria-label="pons game studio home">
+    <Link href="/" className="logo" aria-label="gamepad markets home">
       <span className="logo-mark" aria-hidden="true"><i /><i /><i /></span>
-      <span>pons <em>game studio</em></span>
+      <span>gamepad<em>.markets</em></span>
     </Link>
   );
 }

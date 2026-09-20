@@ -2,12 +2,39 @@ import Link from "next/link";
 import Image from "next/image";
 import { PromptHero } from "@/components/prompt-hero";
 import { GameFrame } from "@/components/game-frame";
-import { exploreGames } from "@/lib/data";
+import { exploreGames, platformPulse } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
+const GAMEPAD_PIXELS = [
+  "........BBBBBBBB........",
+  "......BBBBBBBBBBBB......",
+  "....BBBBBBBBBBBBBBBB....",
+  "..BBBBBBBBBBBBBBBBBBBB..",
+  ".BBBBBBBBBBBBBBBBBBBBBB.",
+  "BBBBBBBBBBBBBBBBBBBBBBBB",
+  "BBBBBWWBBBBBBBBBBWWBBBBB",
+  "BBBBWWWWBBBBBBBBWWWWBBBB",
+  "BBBBBWWBBBBCCBBBBWWBBBBB",
+  "BBBBBBBBBBBCCBBBBBBBBBBB",
+  ".BBBBBBBBBBBBBBBBBBBBBB.",
+  "..BBBBBBBBBBBBBBBBBBBB..",
+  "....BBBB........BBBB....",
+  ".....BB............BB...",
+];
+
+const numberFormat = new Intl.NumberFormat("en-US");
+
+function PixelGamepad() {
+  return <div className="pixel-gamepad" aria-hidden="true">
+    {GAMEPAD_PIXELS.flatMap((row, rowIndex) => row.split("").map((pixel, columnIndex) =>
+      <i key={`${rowIndex}-${columnIndex}`} className={pixel === "." ? "pixel-off" : `pixel-${pixel.toLowerCase()}`} />,
+    ))}
+  </div>;
+}
+
 export default async function HomePage() {
-  const games = await exploreGames();
+  const [games, pulse] = await Promise.all([exploreGames(), platformPulse()]);
   const featured = games[0];
 
   return <main className="home-page">
@@ -35,6 +62,20 @@ export default async function HomePage() {
     <section className="flow-strip"><div className="shell flow-row">
       {["Prompt", "Game", "Token", "Play", "Complete"].map((item, index) => <div key={item}><span>{String(index + 1).padStart(2, "0")}</span><b>{item}</b>{index < 4 && <em>→</em>}</div>)}
     </div></section>
+
+    <section className="market-pulse-section shell" aria-labelledby="market-pulse-title">
+      <div className="market-pulse-copy">
+        <span className="eyebrow"><span className="live-dot" /> Gamepad activity · last 24 hours</span>
+        <h2 id="market-pulse-title">On Gamepad today: <strong>{numberFormat.format(pulse.newGames)}</strong> new games, <strong>{numberFormat.format(pulse.playableBuilds)}</strong> playable builds and <strong>{numberFormat.format(pulse.verifiedRuns)}</strong> verified runs.</h2>
+        <p>Live launchpad activity from the Gamepad database—not an estimate.</p>
+      </div>
+      <div className="market-pulse-visual">
+        <span className="pulse-glow pulse-glow-one" aria-hidden="true" />
+        <span className="pulse-glow pulse-glow-two" aria-hidden="true" />
+        <PixelGamepad />
+        <div className="market-pulse-caption"><span><i /> Live</span><b>Games become markets.</b><small>Powered by pons · Robinhood Chain</small></div>
+      </div>
+    </section>
 
     {featured && <section className="featured-section"><div className="shell featured-grid">
       <div className="featured-copy">
