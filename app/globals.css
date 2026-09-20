@@ -811,3 +811,83 @@ h1, h2, h3 { text-wrap: balance; }
   .feature-card { min-height: 324px; }
   .mini-stage, .token-orbit, .score-mini { height: 150px; }
 }
+
+/* Public game pages stay compact and product-like around the playable surface. */
+.public-game-page { width: min(1080px, calc(100% - 40px)); padding-block: 38px 72px; }
+.public-game-page .game-identity {
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 15px;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 20px;
+}
+.public-game-page .game-logo-large { width: 64px; height: 64px; border-radius: 18px; font-size: 20px; }
+.public-game-page .game-title-row { gap: 9px; }
+.public-game-page .game-title-row h1 { font-size: 34px; line-height: 1; }
+.public-game-page .game-identity > div > p { margin: 3px 0; font-size: 14px; line-height: 1.4; }
+.public-game-page .identity-actions .button { min-height: 40px; padding-inline: 15px; font-size: 12px; }
+.public-game-page .public-stage-grid { grid-template-columns: minmax(0, 1fr) 286px; gap: 14px; }
+.public-game-page .game-stage { border-radius: 20px; box-shadow: 0 18px 50px rgba(20,38,75,.14); }
+.public-game-page .market-panel { padding: 16px; border-radius: 20px; }
+.public-game-page .market-head { padding-bottom: 10px; }
+.public-game-page .market-price { padding: 14px 0; }
+.public-game-page .market-price strong { font-size: 19px; }
+.public-game-page .market-grid { gap: 6px; }
+.public-game-page .market-grid div { padding: 8px; border-radius: 9px; }
+.public-game-page .curve-card { margin: 9px 0; padding: 10px; }
+.public-game-page .market-source { margin-top: 9px; font-size: 10px; line-height: 1.45; }
+.public-game-page .game-about-grid {
+  grid-template-columns: 1.35fr .65fr .9fr;
+  gap: 10px;
+  margin: 18px 0 46px;
+}
+.public-game-page .game-about-grid article {
+  min-width: 0;
+  padding: 16px;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 7px 24px rgba(20,38,75,.045);
+}
+.public-game-page .game-about-grid h2 {
+  margin: 6px 0;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -.02em;
+}
+.public-game-page .game-about-grid p { font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.public-game-page .future-card { background: #edf3ff !important; }
+.public-game-page .leaderboard { margin-top: 0; }
+.public-game-page .leaderboard-head { margin-bottom: 14px; }
+.public-game-page .leaderboard-head h2 {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 38px;
+  font-weight: 400;
+  letter-spacing: -.03em;
+}
+.public-game-page .leaderboard-empty { padding: 22px; border-radius: 14px; }
+.public-game-page .leaderboard-empty span { font-size: 24px; }
+.public-game-page .leaderboard-empty p { font-size: 13px; }
+
+@media (max-width: 900px) {
+  .public-game-page .public-stage-grid { grid-template-columns: 1fr; }
+  .public-game-page .market-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+  .public-game-page .market-head, .public-game-page .market-source { grid-column: 1 / -1; }
+  .public-game-page .market-price, .public-game-page .curve-card { margin: 0; padding-block: 10px; }
+}
+
+@media (max-width: 740px) {
+  .public-game-page { width: min(100% - 24px, 1080px); padding-block: 24px 52px; }
+  .public-game-page .game-identity { grid-template-columns: 52px minmax(0,1fr); padding: 12px; }
+  .public-game-page .game-logo-large { width: 52px; height: 52px; border-radius: 15px; }
+  .public-game-page .game-title-row h1 { font-size: 28px; }
+  .public-game-page .identity-actions { grid-column: 1 / -1; }
+  .public-game-page .public-stage-grid .game-stage { min-height: 0; aspect-ratio: 16 / 10; }
+  .public-game-page .market-panel { grid-template-columns: 1fr; }
+  .public-game-page .market-head, .public-game-page .market-source { grid-column: 1; }
+  .public-game-page .game-about-grid { grid-template-columns: 1fr; margin-bottom: 38px; }
+  .public-game-page .game-about-grid article { padding: 14px; }
+  .public-game-page .leaderboard-head h2 { font-size: 34px; }
+}
