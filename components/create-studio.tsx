@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import type { CreateGameInput, GameConfig } from "@/lib/types";
 import {
@@ -22,7 +21,6 @@ const categories = [
 
 export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?: string; cspNonce: string }) {
   const router = useRouter();
-  const { status } = useSession();
   const [input, setInput] = useState<CreateGameInput>({ name: "", ticker: "", description: "", prompt: initialPrompt, category: "RUNNER", visualStyle: "Neon arcade", difficulty: "NORMAL", developerBuyEth: "0", xUrl: "", websiteUrl: "" });
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [imageReading, setImageReading] = useState(false);
@@ -30,7 +28,6 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
   const [previewToken, setPreviewToken] = useState("");
   const [previewHtml, setPreviewHtml] = useState("");
   const [busy, setBusy] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [restoreNotice, setRestoreNotice] = useState("");
@@ -187,40 +184,14 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
         ? "AI-directed playable preview ready. Test it before saving."
         : mode === "fallback"
           ? "The AI service was temporarily unavailable, so a safe playable fallback was built instead."
-          : status === "authenticated"
-            ? "Playable template ready. AI capacity is temporarily unavailable, so this build stayed local."
-            : "Playable template ready. Sign in with X and regenerate to use AI game direction.");
+          : "Playable template ready. AI capacity is temporarily unavailable, so this build stayed local.");
     } catch (cause) { if (generationRevision === generationRevisionRef.current) setError(cause instanceof Error ? cause.message : "Generation failed"); }
     finally { setBusy(false); }
   }
 
   async function saveDraft() {
-    if (status === "loading" || authBusy) return;
     if (imageReading) { setError("Wait for the token image to finish processing."); return; }
     if (!config || !previewToken || !previewHtml) { setError("Generate a fresh playable preview before saving."); setStep(2); return; }
-    if (status !== "authenticated") {
-      const draftId = draftIdRef.current || getOrCreateTabDraftId();
-      if (!draftId) {
-        setError("Browser session storage is required to preserve this draft during X sign-in.");
-        return;
-      }
-      draftIdRef.current = draftId;
-      if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current);
-      setAuthBusy(true); setError("");
-      try {
-        const committed = await enqueueStorageOperation(() => persistCreateDraft(draftId, draftPayload()));
-        if (!committed.localStorage) {
-          setError("Your draft could not be preserved reliably for the X sign-in round trip. Free some browser storage and try again.");
-          return;
-        }
-        await signIn("twitter", { callbackUrl: "/create" });
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not open X sign-in.");
-      } finally {
-        setAuthBusy(false);
-      }
-      return;
-    }
     if (!imageDataUrl) { setError("Add a token image before saving the launch draft."); setStep(1); return; }
     setBusy(true); setError("");
     try {
@@ -275,7 +246,7 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
       {step === 3 && <section className="preview-section"><div className="section-heading"><div><span>03</span><h2>Test the build</h2></div><p>Nothing is on-chain yet.</p></div>
         {config && previewHtml ? <><GameFrame title={config.title} previewHtml={previewHtml} cspNonce={cspNonce} /><div className="preview-meta"><div><span>Engine</span><b>{config.category.toLowerCase()}</b></div><div><span>Difficulty</span><b>{config.difficulty.toLowerCase()}</b></div><div><span>Generation</span><b>{config.generation?.mode === "ai" ? `AI · ${config.generation.model}` : config.generation?.mode === "fallback" ? "safe fallback" : "template"}</b></div><div><span>Runtime</span><b>v3 · sandboxed</b></div></div></> : <div className="empty-preview"><span>◫</span><h3>No preview yet</h3><p>Describe the game and generate its first build.</p><button className="button button-quiet" onClick={() => goToStep(2)}>Go to game direction</button></div>}
         {notice && <p className="success-copy" role="status">{notice}</p>}{error && <p className="error-copy" role="alert">{error}</p>}
-        <div className="launch-review"><div><h3>Ready to keep this version?</h3><p>Save it as an immutable draft, connect a verified wallet, then read the current pons cost before signing.</p></div><div className="review-actions"><button className="button button-quiet" disabled={busy || imageReading} onClick={generate}>Regenerate</button><button className="button button-primary" disabled={!config || !previewToken || !previewHtml || busy || authBusy || imageReading || status === "loading"} onClick={saveDraft}>{imageReading ? "Processing image…" : status === "loading" ? "Checking X…" : status === "authenticated" ? busy ? "Saving…" : "Save draft & continue" : authBusy ? "Opening X…" : "Sign in with X to save"}</button></div></div>
+        <div className="launch-review"><div><h3>Ready to keep this version?</h3><p>Save it as an immutable draft. A wallet signature is only required when you launch.</p></div><div className="review-actions"><button className="button button-quiet" disabled={busy || imageReading} onClick={generate}>Regenerate</button><button className="button button-primary" disabled={!config || !previewToken || !previewHtml || busy || imageReading} onClick={saveDraft}>{imageReading ? "Processing image…" : busy ? "Saving…" : "Save draft & continue"}</button></div></div>
       </section>}
       {error && step !== 3 && <p className="error-copy form-error" role="alert">{error}</p>}
     </section>
