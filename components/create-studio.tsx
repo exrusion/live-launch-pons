@@ -19,6 +19,13 @@ const categories = [
   { value: "SHOOTER", title: "Top-down shooter", copy: "Move, aim, and survive." },
 ] as const;
 
+const promptIdeas = [
+  { title: "Cloud courier", category: "RUNNER", style: "Pastel cloud", difficulty: "EASY", prompt: "A tiny robot courier races across floating cloud cities, jumps over broken sky bridges, collects glowing parcels, and escapes a playful storm." },
+  { title: "Moon mouse", category: "FLAPPY", style: "Cosmic minimal", difficulty: "NORMAL", prompt: "A brave moon mouse pilots a pocket rocket through moving satellite gates, collects cheese stars, and avoids sleepy space drones." },
+  { title: "Neon defender", category: "SHOOTER", style: "Arcade noir", difficulty: "HARD", prompt: "A neon guardian protects a midnight arcade from waves of corrupted bots, rescues lost pixels, and unlocks stronger energy weapons." },
+  { title: "Jungle dash", category: "RUNNER", style: "Bright cartoon", difficulty: "NORMAL", prompt: "A cheerful explorer dashes through a living jungle temple, swings past traps, collects ancient fruit, and outruns a giant stone guardian." },
+] as const;
+
 function validOptionalUrl(value: string | undefined) {
   if (!value) return true;
   try {
@@ -138,6 +145,23 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
     draftInteractionRef.current = true;
     setInput((current) => ({ ...current, [key]: value }));
     invalidatePreview();
+  }
+
+  function applyPromptIdea(idea: (typeof promptIdeas)[number]) {
+    draftInteractionRef.current = true;
+    setInput((current) => ({
+      ...current,
+      prompt: idea.prompt,
+      category: idea.category,
+      visualStyle: idea.style,
+      difficulty: idea.difficulty,
+    }));
+    invalidatePreview();
+  }
+
+  function surpriseMe() {
+    const currentIndex = promptIdeas.findIndex((idea) => idea.prompt === input.prompt);
+    applyPromptIdea(promptIdeas[(currentIndex + 1 + Math.floor(Math.random() * (promptIdeas.length - 1))) % promptIdeas.length]);
   }
 
   function goToStep(nextStep: number) {
@@ -271,11 +295,13 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
         <div className="field-grid"><label><span>X link <em>optional</em></span><input value={input.xUrl} onChange={(e) => update("xUrl", e.target.value)} placeholder="https://x.com/yourgame" /></label><label><span>Website <em>optional</em></span><input value={input.websiteUrl} onChange={(e) => update("websiteUrl", e.target.value)} placeholder="https://yourgame.xyz" /></label></div>
         <div className="form-footer"><span>Drafts stay private until an on-chain launch confirms.</span><button className="button button-primary" onClick={() => goToStep(2)}>Game direction →</button></div>
       </section>}
-      {step === 2 && <section className="form-section"><div className="section-heading"><div><span>02</span><h2>Describe the game</h2></div><p>Choose a safe engine, then shape its world.</p></div>
-        <label><span>One-prompt game description</span><textarea className="prompt-textarea" value={input.prompt} onChange={(e) => update("prompt", e.target.value)} placeholder="A cyber mouse runs through a collapsing laboratory, collects neurons and avoids security drones." maxLength={900} /><small>{input.prompt.length}/900</small></label>
-        <div className="choice-label">Game engine</div><div className="category-grid">{categories.map((category) => <button key={category.value} className={input.category === category.value ? "category-card selected" : "category-card"} aria-pressed={input.category === category.value} onClick={() => update("category", category.value)}><span className={`category-icon icon-${category.value.toLowerCase()}`} /><b>{category.title}</b><small>{category.copy}</small></button>)}</div>
+      {step === 2 && <section className="form-section"><div className="section-heading"><div><span>02</span><h2>Shape your game</h2></div><p>Start with an idea or let AI prepare one.</p></div>
+        <div className="prompt-assist"><div><span>AI prompt starters</span><p>Pick a ready-made concept. You can edit every word before generating.</p></div><button className="prompt-surprise" type="button" onClick={surpriseMe}>✦ Surprise me</button></div>
+        <div className="prompt-idea-grid">{promptIdeas.map((idea) => <button key={idea.title} type="button" className={input.prompt === idea.prompt ? "prompt-idea selected" : "prompt-idea"} onClick={() => applyPromptIdea(idea)}><b>{idea.title}</b><small>{idea.category.toLowerCase()} · {idea.style}</small></button>)}</div>
+        <label><span>Your game idea</span><textarea className="prompt-textarea" value={input.prompt} onChange={(e) => update("prompt", e.target.value)} placeholder="Describe the hero, world, challenge and what the player collects…" maxLength={900} /><small>{input.prompt.length}/900</small></label>
+        <div className="choice-label">Choose how it plays</div><div className="category-grid">{categories.map((category) => <button key={category.value} className={input.category === category.value ? "category-card selected" : "category-card"} aria-pressed={input.category === category.value} onClick={() => update("category", category.value)}><span className={`category-icon icon-${category.value.toLowerCase()}`} /><b>{category.title}</b><small>{category.copy}</small></button>)}</div>
         <div className="field-grid three"><label><span>Visual style</span><select value={input.visualStyle} onChange={(e) => update("visualStyle", e.target.value)}><option>Neon arcade</option><option>Pixel noir</option><option>Bright cartoon</option><option>Retro terminal</option><option>Cosmic minimal</option></select></label><label><span>Difficulty</span><select value={input.difficulty} onChange={(e) => update("difficulty", e.target.value as CreateGameInput["difficulty"])}><option value="EASY">Easy</option><option value="NORMAL">Normal</option><option value="HARD">Hard</option></select></label><label><span>Developer buy</span><div className="suffixed-input"><input value="0" disabled aria-label="Developer buy is disabled in Phase 1" /><b>ETH</b></div><small>Disabled for Phase 1 safety</small></label></div>
-        <div className="estimate-bar"><div><span>Generation</span><b>About 10–20 seconds</b></div><div><span>pons launch cost</span><b>Read live before approval</b></div><div><span>Network</span><b>Robinhood Chain</b></div></div>
+        <div className="estimate-bar"><div><span>AI build</span><b>Ready in about 10–20 seconds</b></div><div><span>Launch price</span><b>Shown before wallet approval</b></div><div><span>Network</span><b>Robinhood Chain</b></div></div>
         <div className="form-footer"><button className="text-button" onClick={() => goToStep(1)}>← Back</button><button className="button button-primary" disabled={busy || imageReading} onClick={generate}>{busy ? "Building preview…" : imageReading ? "Processing image…" : "Generate playable preview ↗"}</button></div>
       </section>}
       {step === 3 && <section className="preview-section"><div className="section-heading"><div><span>03</span><h2>Test the build</h2></div><p>Nothing is on-chain yet.</p></div>
