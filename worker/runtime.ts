@@ -5,6 +5,7 @@ import { finalizeLaunch, markLaunchFailed, restoreGameAfterTerminalLaunch } from
 import { PONS_LAUNCH_QUEUE, type PonsLaunchJob } from "../lib/queue";
 import { createWorkerRedis, hasRedis, recordWorkerHeartbeat } from "../lib/redis";
 import { hasSponsorSigningConfig, processNextRebate } from "../lib/rebates";
+import { processNextSponsoredLaunch, processSponsoredLaunchForId } from "../lib/sponsored-launches";
 
 const workerId = `${os.hostname()}:${process.pid}`;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -13,7 +14,7 @@ async function releaseExpiredReservations() {
   await transaction(async (client) => {
     const expired = await client.query<{ id: string; game_id: string; free_credit_id: string | null }>(
       `UPDATE pons_launches SET status='EXPIRED',rebate_reserved_wei=0,error_code='QUOTE_EXPIRED',error_detail='Wallet signature was not submitted before quote expiry.',updated_at=now()
-       WHERE status='AWAITING_SIGNATURE' AND quote_expires_at<now() RETURNING id,game_id,free_credit_id`,
+       WHERE status='AWAITING_SIGNATURE' AND sponsored_launch=false AND quote_expires_at<now() RETURNING id,game_id,free_credit_id`,
     );
     for (const row of expired.rows) {
       if (row.free_credit_id) {
@@ -76,8 +77,16 @@ function startQueueWorker() {
   const worker = new Worker<PonsLaunchJob>(
     PONS_LAUNCH_QUEUE,
     async (job: Job<PonsLaunchJob>) => {
-      if (job.name !== "verify-launch" || !job.data.launchId) throw new Error("INVALID_JOB");
-      await processLaunchById(job.data.launchId);
+      if (!job.data.launchId) throw new Error("INVALID_JOB");
+      if (job.name === "verify-launch") {
+        await processLaunchById(job.data.launchId);
+        return;
+      }
+      if (job.name === "submit-sponsored-launch") {
+        await processSponsoredLaunchForId(job.data.launchId);
+        return;
+      }
+      throw new Error("INVALID_JOB");
     },
     { connection, concurrency: 4 },
   );
@@ -129,7 +138,14 @@ async function loop() {
       }
       maintenanceAt = Date.now() + 60_000;
     }
-    const [launchResult, rebateResult] = await Promise.allSettled([processNextLaunch(), processNextRebate()]);
+    const [sponsoredResult, launchResult, rebateResult] = await Promise.allSettled([
+      processNextSponsoredLaunch(),
+      processNextLaunch(),
+      processNextRebate(),
+    ]);
+    if (sponsoredResult.status === "rejected") {
+      console.error("sponsored_launch_worker_cycle_error", { workerId, message: sponsoredResult.reason instanceof Error ? sponsoredResult.reason.message : "unknown" });
+    }
     if (launchResult.status === "rejected") {
       console.error("launch_worker_cycle_error", { workerId, message: launchResult.reason instanceof Error ? launchResult.reason.message : "unknown" });
     }
@@ -138,7 +154,10 @@ async function loop() {
     }
     const launchWorked = launchResult.status === "fulfilled" && launchResult.value;
     const rebateWorked = rebateResult.status === "fulfilled" && rebateResult.value;
-    if (!launchWorked && !rebateWorked) await delay(launchResult.status === "rejected" || rebateResult.status === "rejected" ? 5_000 : 3_000);
+    const sponsoredWorked = sponsoredResult.status === "fulfilled" && sponsoredResult.value;
+    if (!sponsoredWorked && !launchWorked && !rebateWorked) {
+      await delay(sponsoredResult.status === "rejected" || launchResult.status === "rejected" || rebateResult.status === "rejected" ? 5_000 : 3_000);
+    }
   }
 }
 

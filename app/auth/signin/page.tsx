@@ -32,7 +32,7 @@ export default function SignInPage() {
           <span className="eyebrow">One free creator launch</span>
         </div>
         <h1>Launch your first game with X.</h1>
-        <p>Verify one X account to unlock one Pons launch-fee credit. After confirmation, the verified launch fee is returned automatically; network gas still applies.</p>
+        <p>Verify one X account to unlock one free Pons launch. The platform wallet pays the launch fee and network gas; your connected wallet stays the creator recipient.</p>
         <div className="state-row" aria-label="How the launch credit works">
           <span>Sign in</span><i>→</i><span>Build</span><i>→</i><span>Launch</span>
         </div>

@@ -34,7 +34,7 @@ type RebateRow = {
   rebate_attempts: number;
 };
 
-type TransferFees =
+export type SponsorTransactionFees =
   | { type: "eip1559"; gasLimit: bigint; maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }
   | { type: "legacy"; gasLimit: bigint; gasPrice: bigint };
 
@@ -87,7 +87,7 @@ function sponsorAccount() {
   return account;
 }
 
-function sponsorAddress() {
+export function sponsorFundingAddress() {
   if (process.env.FREE_LAUNCH_REBATE_ENABLED !== "true") throw new Error("FREE_LAUNCH_REBATE_DISABLED");
   if (process.env.SPONSOR_ADDRESS) {
     if (!isAddress(process.env.SPONSOR_ADDRESS)) throw new Error("SPONSOR_ADDRESS_INVALID");
@@ -96,7 +96,7 @@ function sponsorAddress() {
   return sponsorAccount().address;
 }
 
-function sponsorWallet() {
+export function sponsorSigningWallet() {
   const account = sponsorAccount();
   return {
     account,
@@ -122,8 +122,8 @@ export function nextSponsorNonce(networkPendingNonce: number, largestReservedNon
   return Math.max(networkPendingNonce, Number(candidate));
 }
 
-async function transferFees(sponsor: Address, recipient: Address, value: bigint): Promise<TransferFees> {
-  const estimatedGas = await publicClient.estimateGas({ account: sponsor, to: recipient, value });
+async function transactionFees(sponsor: Address, to: Address, value: bigint, data?: Hex): Promise<SponsorTransactionFees> {
+  const estimatedGas = await publicClient.estimateGas({ account: sponsor, to, value, data });
   const gasLimit = (estimatedGas * GAS_LIMIT_BUFFER_BPS + 9_999n) / 10_000n;
   try {
     const fees = await publicClient.estimateFeesPerGas({ type: "eip1559" });
@@ -141,9 +141,9 @@ async function transferFees(sponsor: Address, recipient: Address, value: bigint)
 async function sponsorCapacity(sponsor: Address, recipient: Address, value: bigint) {
   const balance = await publicClient.getBalance({ address: sponsor });
   if (balance < value) throw new Error("REBATE_SPONSOR_UNFUNDED");
-  let fees: TransferFees;
+  let fees: SponsorTransactionFees;
   try {
-    fees = await transferFees(sponsor, recipient, value);
+    fees = await transactionFees(sponsor, recipient, value);
   } catch {
     throw new Error("REBATE_TRANSFER_PREFLIGHT_FAILED");
   }
@@ -159,8 +159,8 @@ type RebateCapacityOptions = { client?: PoolClient; excludeLaunchId?: string };
 export async function assertSponsorCanReimburse(value: bigint, recipient: Address, options: RebateCapacityOptions = {}) {
   assertRebateAmountAllowed(value);
   if (!isAddress(recipient)) throw new Error("INVALID_REBATE_RECIPIENT");
-  const address = sponsorAddress();
-  if (options.client) await options.client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`pons-rebate-reserve:${address.toLowerCase()}`]);
+  const address = sponsorFundingAddress();
+  if (options.client) await options.client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`pons-sponsor-reserve:${address.toLowerCase()}`]);
   const capacity = await sponsorCapacity(address, getAddress(recipient), value);
   const committedSql = `SELECT COALESCE(sum(rebate_reserved_wei),0)::text AS total FROM pons_launches
     WHERE rebate_reserved_wei>0 AND rebate_status NOT IN ('SENT','FAILED')
@@ -175,6 +175,9 @@ export async function assertSponsorCanReimburse(value: bigint, recipient: Addres
         WHERE rebate_status='SENT' AND rebate_sent_at>=now()-interval '24 hours'
        UNION ALL
        SELECT launch_fee_wei AS amount_wei FROM pons_launches
+        WHERE sponsored_launch=true AND status='CONFIRMED' AND updated_at>=now()-interval '24 hours'
+       UNION ALL
+       SELECT launch_fee_wei AS amount_wei FROM pons_launches
         WHERE rebate_reserved_wei>0 AND rebate_status NOT IN ('SENT','FAILED')
           AND status NOT IN ('FAILED','EXPIRED') AND ($1::uuid IS NULL OR id<>$1::uuid)
      ) liabilities`;
@@ -185,6 +188,58 @@ export async function assertSponsorCanReimburse(value: bigint, recipient: Addres
     throw new Error("REBATE_DAILY_BUDGET_RESERVED");
   }
   return { reserveWei: capacity.required.toString(), sponsorAddress: address };
+}
+
+/**
+ * Reserves enough of the platform wallet to submit an exact Pons call. The
+ * caller supplies already-validated calldata; private-key material never
+ * leaves the worker service.
+ */
+export async function assertSponsorCanFundLaunch(
+  value: bigint,
+  factory: Address,
+  data: Hex,
+  options: RebateCapacityOptions = {},
+) {
+  assertRebateAmountAllowed(value);
+  if (!isAddress(factory)) throw new Error("INVALID_SPONSORED_LAUNCH_TARGET");
+  const address = sponsorFundingAddress();
+  if (options.client) await options.client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`pons-sponsor-reserve:${address.toLowerCase()}`]);
+  let fees: SponsorTransactionFees;
+  try {
+    fees = await transactionFees(address, getAddress(factory), value, data);
+  } catch {
+    throw new Error("SPONSORED_LAUNCH_PREFLIGHT_FAILED");
+  }
+  const feePerGas = fees.type === "eip1559" ? fees.maxFeePerGas : fees.gasPrice;
+  const required = rebateRequiredBalance(value, fees.gasLimit, feePerGas);
+  const balance = await publicClient.getBalance({ address });
+  if (balance < required) throw new Error("SPONSORED_LAUNCH_WALLET_UNFUNDED");
+  const committedSql = `SELECT COALESCE(sum(rebate_reserved_wei),0)::text AS total FROM pons_launches
+    WHERE rebate_reserved_wei>0 AND rebate_status NOT IN ('SENT','FAILED')
+      AND status NOT IN ('FAILED','EXPIRED','CONFIRMED') AND ($1::uuid IS NULL OR id<>$1::uuid)`;
+  const committed = options.client
+    ? await options.client.query<{ total: string }>(committedSql, [options.excludeLaunchId || null])
+    : await query<{ total: string }>(committedSql, [options.excludeLaunchId || null]);
+  if (balance < BigInt(committed.rows[0]?.total || "0") + required) throw new Error("SPONSORED_LAUNCH_CAPACITY_RESERVED");
+  const budgetSql = `SELECT COALESCE(sum(amount_wei),0)::text AS total FROM (
+       SELECT launch_fee_wei AS amount_wei FROM pons_launches
+        WHERE rebate_status='SENT' AND rebate_sent_at>=now()-interval '24 hours'
+       UNION ALL
+       SELECT launch_fee_wei AS amount_wei FROM pons_launches
+        WHERE sponsored_launch=true AND status='CONFIRMED' AND updated_at>=now()-interval '24 hours'
+       UNION ALL
+       SELECT launch_fee_wei AS amount_wei FROM pons_launches
+        WHERE rebate_reserved_wei>0 AND rebate_status NOT IN ('SENT','FAILED')
+          AND status NOT IN ('FAILED','EXPIRED','CONFIRMED') AND ($1::uuid IS NULL OR id<>$1::uuid)
+     ) liabilities`;
+  const budgetUsage = options.client
+    ? await options.client.query<{ total: string }>(budgetSql, [options.excludeLaunchId || null])
+    : await query<{ total: string }>(budgetSql, [options.excludeLaunchId || null]);
+  if (BigInt(budgetUsage.rows[0]?.total || "0") + value > positiveWei("FREE_LAUNCH_DAILY_BUDGET_WEI")) {
+    throw new Error("SPONSORED_LAUNCH_DAILY_BUDGET_RESERVED");
+  }
+  return { reserveWei: required.toString(), sponsorAddress: address, fees };
 }
 
 function redactedError(error: unknown) {
@@ -230,9 +285,9 @@ async function noteRebateAttempt(id: string, code: string | null, detail: string
 
 async function prepareRebate(id: string) {
   return transaction(async (client) => {
-    const { account, client: walletClient } = sponsorWallet();
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`pons-rebate-nonce:${account.address.toLowerCase()}`]);
-    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`pons-rebate-reserve:${account.address.toLowerCase()}`]);
+    const { account, client: walletClient } = sponsorSigningWallet();
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`pons-sponsor-nonce:${account.address.toLowerCase()}`]);
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [`pons-sponsor-reserve:${account.address.toLowerCase()}`]);
     const locked = await client.query<RebateRow>("SELECT * FROM pons_launches WHERE id=$1 FOR UPDATE", [id]);
     const row = locked.rows[0];
     if (!row || row.rebate_status !== "PENDING") return row || null;
@@ -261,8 +316,13 @@ async function prepareRebate(id: string) {
     }
     const networkNonce = await publicClient.getTransactionCount({ address: account.address, blockTag: "pending" });
     const reserved = await client.query<{ max_nonce: string | null }>(
-      `SELECT max(rebate_nonce)::text AS max_nonce FROM pons_launches
-       WHERE chain_id=$1 AND rebate_sponsor_address=$2 AND rebate_nonce IS NOT NULL`,
+      `SELECT max(nonce_value)::text AS max_nonce FROM (
+         SELECT rebate_nonce AS nonce_value FROM pons_launches
+          WHERE chain_id=$1 AND rebate_sponsor_address=$2 AND rebate_nonce IS NOT NULL
+         UNION ALL
+         SELECT sponsored_nonce AS nonce_value FROM pons_launches
+          WHERE chain_id=$1 AND wallet_address=$2 AND sponsored_nonce IS NOT NULL
+       ) reserved_nonces`,
       [robinhoodChain.id, account.address.toLowerCase()],
     );
     const nonce = nextSponsorNonce(networkNonce, reserved.rows[0]?.max_nonce || null);
@@ -324,7 +384,7 @@ async function broadcastAndConfirm(row: RebateRow) {
   }
   if (!receipt) {
     try {
-      const { client } = sponsorWallet();
+      const { client } = sponsorSigningWallet();
       const broadcastHash = await client.sendRawTransaction({ serializedTransaction: signed });
       if (broadcastHash.toLowerCase() !== hash.toLowerCase()) throw new Error("REBATE_HASH_MISMATCH");
       await noteRebateAttempt(row.id, null, null, true);

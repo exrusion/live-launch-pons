@@ -34,7 +34,7 @@ function launchQueue() {
 
 /**
  * Queue delivery is an acceleration path. A false return deliberately leaves
- * the launch in SUBMITTED so the database polling worker can recover it.
+ * durable database state for the polling worker to recover.
  */
 export async function enqueueLaunchVerification(launchId: string) {
   const queue = launchQueue();
@@ -44,6 +44,21 @@ export async function enqueueLaunchVerification(launchId: string) {
     return true;
   } catch (error) {
     console.warn("launch_enqueue_failed", {
+      launchId,
+      message: error instanceof Error ? error.message : "unknown",
+    });
+    return false;
+  }
+}
+
+export async function enqueueSponsoredLaunch(launchId: string) {
+  const queue = launchQueue();
+  if (!queue) return false;
+  try {
+    await queue.add("submit-sponsored-launch", { launchId }, { jobId: `sponsor-${launchId}` });
+    return true;
+  } catch (error) {
+    console.warn("sponsored_launch_enqueue_failed", {
       launchId,
       message: error instanceof Error ? error.message : "unknown",
     });

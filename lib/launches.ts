@@ -18,6 +18,7 @@ type LaunchRow = {
   token_params: PonsTokenParams;
   transaction_hash: string | null;
   free_credit_id: string | null;
+  sponsored_launch: boolean;
   status: string;
   rebate_status: RebateStatus;
 };
@@ -27,7 +28,7 @@ export async function launchById(id: string, userId?: string) {
     `SELECT p.id,p.game_id,p.game_version_id,p.user_id,p.wallet_address,p.chain_id,p.factory_address,
        p.pair_token,p.launch_config_id::text,p.launch_fee_wei::text,p.status,p.transaction_hash,
        p.receipt_block::text,p.token_address,p.curve_address,p.quote_expires_at,p.created_at,p.updated_at,
-       p.error_code,p.error_detail,p.free_credit_id,p.rebate_status,p.rebate_tx_hash,
+       p.error_code,p.error_detail,p.free_credit_id,p.sponsored_launch,p.rebate_status,p.rebate_tx_hash,
        p.rebate_error_code,p.rebate_error_detail,p.rebate_started_at,p.rebate_broadcast_at,p.rebate_sent_at,
        g.name AS game_name,g.ticker
      FROM pons_launches p JOIN games g ON g.id=p.game_id
@@ -104,7 +105,8 @@ export async function finalizeLaunch(id: string) {
       );
       await client.query(
         `UPDATE pons_launches SET status='CONFIRMED',receipt_block=$2,token_address=$3,curve_address=$4,
-         rebate_status=CASE WHEN free_credit_id IS NOT NULL THEN 'PENDING' ELSE 'NOT_APPLICABLE' END,
+         rebate_status=CASE WHEN free_credit_id IS NOT NULL AND sponsored_launch=false THEN 'PENDING' ELSE 'NOT_APPLICABLE' END,
+         rebate_reserved_wei=CASE WHEN sponsored_launch=true THEN 0 ELSE rebate_reserved_wei END,
          rebate_error_code=NULL,rebate_error_detail=NULL,updated_at=now(),error_code=NULL,error_detail=NULL WHERE id=$1`,
         [id, verified.receipt.blockNumber.toString(), verified.token, verified.curve],
       );
@@ -119,9 +121,9 @@ export async function finalizeLaunch(id: string) {
       await client.query(
         `INSERT INTO audit_logs(actor_user_id,actor_type,action,resource_type,resource_id,after_data)
          VALUES($1,'SYSTEM','PONS_LAUNCH_CONFIRMED','PONS_LAUNCH',$2,$3::jsonb)`,
-        [launch.user_id, id, JSON.stringify({ token: verified.token, curve: verified.curve, block: verified.receipt.blockNumber.toString() })],
+        [launch.user_id, id, JSON.stringify({ token: verified.token, curve: verified.curve, block: verified.receipt.blockNumber.toString(), sponsored: launch.sponsored_launch })],
       );
-      if (launch.free_credit_id) {
+      if (launch.free_credit_id && !launch.sponsored_launch) {
         await client.query(
           `INSERT INTO audit_logs(actor_user_id,actor_type,action,resource_type,resource_id,after_data)
            VALUES($1,'SYSTEM','PONS_REBATE_PENDING','PONS_LAUNCH',$2,$3::jsonb)`,

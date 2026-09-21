@@ -8,7 +8,7 @@ import { PONS_FACTORY_ABI } from "@/lib/pons-abi";
 import { robinhoodChain } from "@/lib/chain";
 
 type Quote = {
-  launchId: string; walletAddress: Address; factory: Address; args: [Record<string, unknown>, string, Address]; value: string; quoteExpiresAt: string;
+  sponsored: false; launchId: string; walletAddress: Address; factory: Address; args: [Record<string, unknown>, string, Address]; value: string; quoteExpiresAt: string;
   costs: { launchFeeWei: string; developerBuyWei: string; gas: string };
   freeCredit: { requested: boolean; sponsorReady: boolean; method: string | null };
   config: { supply: string; curveFeeBps: string; graduationThreshold: string };
@@ -23,6 +23,7 @@ export type LaunchState = {
   tradingUrl: string | null;
   quoteExpiresAt: string | null;
   freeCreditRequested: boolean;
+  sponsoredLaunch: boolean;
   rebateStatus: string | null;
   rebateTxHash: string | null;
   rebateErrorDetail: string | null;
@@ -36,6 +37,7 @@ type SavedLaunch = {
   error_detail?: string | null;
   quote_expires_at?: string | null;
   free_credit_id?: string | null;
+  sponsored_launch?: boolean;
   rebate_status?: string | null;
   rebate_tx_hash?: string | null;
   rebate_error_detail?: string | null;
@@ -57,6 +59,7 @@ function savedLaunchState(savedLaunch: SavedLaunch, requestedCredit = false, fal
     tradingUrl: tokenAddress ? `https://www.ponsfamily.com/launchpad/${tokenAddress}` : fallbackTradingUrl,
     quoteExpiresAt: savedLaunch.quote_expires_at || null,
     freeCreditRequested: Boolean(savedLaunch.free_credit_id) || requestedCredit,
+    sponsoredLaunch: Boolean(savedLaunch.sponsored_launch),
     rebateStatus: savedLaunch.rebate_status || null,
     rebateTxHash: savedLaunch.rebate_tx_hash || null,
     rebateErrorDetail: savedLaunch.rebate_error_detail || null,
@@ -65,6 +68,7 @@ function savedLaunchState(savedLaunch: SavedLaunch, requestedCredit = false, fal
 
 function launchStatusCopy(launch: LaunchState | null) {
   if (!launch) return "Ready for wallet verification";
+  if (launch.status === "CONFIRMED" && launch.sponsoredLaunch) return "Free launch confirmed. The platform wallet paid the Pons fee and network gas.";
   if (launch.status === "CONFIRMED") return launch.rebateStatus === "SENT"
     ? "Launch confirmed and the exact pons fee was reimbursed."
     : launch.rebateStatus === "FAILED"
@@ -72,9 +76,9 @@ function launchStatusCopy(launch: LaunchState | null) {
       : launch.freeCreditRequested
         ? "Launch confirmed. Reimbursement processing continues safely in the background."
         : "Launch confirmed through the official pons factory.";
-  if (launch.status === "CONFIRMING") return "Transaction found. Waiting for on-chain confirmations…";
-  if (launch.status === "SUBMITTED") return "Transaction submitted. Waiting for independent on-chain verification…";
-  if (launch.status === "AWAITING_SIGNATURE") return "A live launch quote is already reserved for this game.";
+  if (launch.status === "CONFIRMING") return launch.sponsoredLaunch ? "Platform launch found. Waiting for on-chain confirmations…" : "Transaction found. Waiting for on-chain confirmations…";
+  if (launch.status === "SUBMITTED") return launch.sponsoredLaunch ? "Platform wallet submitted the free launch. Waiting for confirmations…" : "Transaction submitted. Waiting for independent on-chain verification…";
+  if (launch.status === "AWAITING_SIGNATURE") return launch.sponsoredLaunch ? "Platform wallet is preparing your free launch…" : "A live launch quote is already reserved for this game.";
   if (launch.status === "QUOTING") return "A launch quote is already being prepared for this game.";
   if (launch.status === "FAILED") return "The last launch failed. Verify your wallet to try again.";
   if (launch.status === "EXPIRED") return "The previous quote expired. Verify your wallet for a fresh quote.";
@@ -103,7 +107,7 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
   const [rebateTxHash, setRebateTxHash] = useState(initialLaunch?.rebateTxHash || "");
   const hasActiveLaunch = Boolean(launchState && ACTIVE_LAUNCH_STATUSES.has(launchState.status));
   const isAwaitingSignature = launchState?.status === "AWAITING_SIGNATURE";
-  const isPollingLaunch = Boolean(launchState && POLLING_LAUNCH_STATUSES.has(launchState.status));
+  const isPollingLaunch = Boolean(launchState && (POLLING_LAUNCH_STATUSES.has(launchState.status) || (launchState.sponsoredLaunch && launchState.status === "AWAITING_SIGNATURE")));
   const isConfirmed = launchState?.status === "CONFIRMED";
 
   function applyLaunchState(nextLaunch: LaunchState) {
@@ -131,10 +135,10 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
     setRebateStatus(initialLaunch?.rebateStatus || "");
     setRebateTxHash(initialLaunch?.rebateTxHash || "");
     if (initialLaunch?.status !== "AWAITING_SIGNATURE" && initialLaunch?.status !== "EXPIRED") setQuote(null);
-  }, [gameId, initialLaunch?.id, initialLaunch?.status, initialLaunch?.transactionHash, initialLaunch?.tokenAddress, initialLaunch?.errorDetail, initialLaunch?.tradingUrl, initialLaunch?.quoteExpiresAt, initialLaunch?.freeCreditRequested, initialLaunch?.rebateStatus, initialLaunch?.rebateTxHash, initialLaunch?.rebateErrorDetail]);
+  }, [gameId, initialLaunch?.id, initialLaunch?.status, initialLaunch?.transactionHash, initialLaunch?.tokenAddress, initialLaunch?.errorDetail, initialLaunch?.tradingUrl, initialLaunch?.quoteExpiresAt, initialLaunch?.freeCreditRequested, initialLaunch?.sponsoredLaunch, initialLaunch?.rebateStatus, initialLaunch?.rebateTxHash, initialLaunch?.rebateErrorDetail]);
 
   useEffect(() => {
-    if (!launchState || (!POLLING_LAUNCH_STATUSES.has(launchState.status) && !(launchState.status === "CONFIRMED" && ["PENDING", "SENDING"].includes(launchState.rebateStatus || "")))) return;
+    if (!launchState || (!POLLING_LAUNCH_STATUSES.has(launchState.status) && !(launchState.status === "CONFIRMED" && !launchState.sponsoredLaunch && ["PENDING", "SENDING"].includes(launchState.rebateStatus || "")))) return;
     let cancelled = false;
     const activeQuote = quote?.launchId === launchState.id ? quote : undefined;
     trackLaunch(launchState.id, launchState.freeCreditRequested, activeQuote, () => cancelled).catch((cause) => {
@@ -247,6 +251,7 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
             localStorage.removeItem(`pons-launch-tx:${launchId}`);
           } catch {}
         }
+        if (nextLaunch.sponsoredLaunch) { setStatus("Free launch confirmed. The platform wallet paid the Pons fee and network gas."); return; }
         if (!nextLaunch.freeCreditRequested) { setStatus("Launch confirmed through the official pons factory."); return; }
         if (savedLaunch.rebate_status === "SENT") { setStatus("Launch confirmed and the exact pons fee was reimbursed."); return; }
         if (savedLaunch.rebate_status === "FAILED") {
@@ -256,8 +261,8 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
         }
         setStatus(savedLaunch.rebate_status === "SENDING" ? "Launch confirmed. Reimbursement sent; waiting for confirmations…" : "Launch confirmed. Reimbursement queued…");
       }
-      if (savedLaunch.status === "CONFIRMING") setStatus("Transaction found. Waiting for on-chain confirmations…");
-      if (savedLaunch.status === "SUBMITTED") setStatus("Transaction submitted. Waiting for independent on-chain verification…");
+      if (savedLaunch.status === "CONFIRMING") setStatus(nextLaunch.sponsoredLaunch ? "Platform launch found. Waiting for on-chain confirmations…" : "Transaction found. Waiting for on-chain confirmations…");
+      if (savedLaunch.status === "SUBMITTED") setStatus(nextLaunch.sponsoredLaunch ? "Platform wallet submitted the free launch. Waiting for confirmations…" : "Transaction submitted. Waiting for independent on-chain verification…");
       if (savedLaunch.status === "FAILED") {
         setQuote(null);
         setStatus("The last launch failed. Verify your wallet to try again.");
@@ -305,6 +310,7 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
       tradingUrl: current?.tradingUrl || null,
       quoteExpiresAt: current?.quoteExpiresAt || activeQuote.quoteExpiresAt,
       freeCreditRequested: trackedQuote.freeCredit.requested,
+      sponsoredLaunch: false,
       rebateStatus: current?.rebateStatus || "NOT_APPLICABLE",
       rebateTxHash: current?.rebateTxHash || null,
       rebateErrorDetail: null,
@@ -333,7 +339,7 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
       setStatus(launchStatusCopy(launchState));
       return;
     }
-    setBusy(true); setError(""); setStatus("Reading pons V2 contracts…");
+    setBusy(true); setError(""); setStatus(useCredit ? "Preparing your platform-sponsored launch…" : "Reading pons V2 contracts…");
     try {
       const pendingKey = `pons-launch-pending:${gameId}:${address.toLowerCase()}`;
       let idempotencyKey = crypto.randomUUID();
@@ -347,7 +353,33 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
         try { localStorage.removeItem(pendingKey); } catch {}
         throw new Error(body.error || "Could not prepare launch");
       }
-      setQuote(body);
+      if (body.sponsored) {
+        setQuote(null);
+        setTxHash(body.transactionHash || "");
+        const sponsoredState: LaunchState = {
+          id: body.launchId,
+          status: body.status || "AWAITING_SIGNATURE",
+          transactionHash: body.transactionHash || null,
+          tokenAddress: body.tokenAddress || null,
+          errorDetail: null,
+          tradingUrl: body.tradingUrl || null,
+          quoteExpiresAt: body.quoteExpiresAt,
+          freeCreditRequested: true,
+          sponsoredLaunch: true,
+          rebateStatus: "NOT_APPLICABLE",
+          rebateTxHash: null,
+          rebateErrorDetail: null,
+        };
+        setLaunchState(sponsoredState);
+        setStatus(launchStatusCopy(sponsoredState));
+        try {
+          localStorage.removeItem(`pons-launch-quote:${gameId}:${address.toLowerCase()}`);
+          localStorage.removeItem(`pons-launch-quote:${gameId}`);
+          localStorage.removeItem(pendingKey);
+        } catch {}
+        return;
+      }
+      setQuote(body as Quote);
       setTxHash("");
       setLaunchState({
         id: body.launchId,
@@ -358,6 +390,7 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
         tradingUrl: null,
         quoteExpiresAt: body.quoteExpiresAt,
         freeCreditRequested: Boolean(body.freeCredit?.requested),
+        sponsoredLaunch: false,
         rebateStatus: "NOT_APPLICABLE",
         rebateTxHash: null,
         rebateErrorDetail: null,
@@ -408,18 +441,18 @@ export function LaunchPanel({ gameId, creditStatus, sponsorReady, initialLaunch 
   }
 
   return <div className="launch-panel">
-    <div className="launch-panel-head"><div><span className="live-dot" />Live pons V2</div><small>Robinhood Chain · user-signed</small></div>
+    <div className="launch-panel-head"><div><span className="live-dot" />Live pons V2</div><small>Robinhood Chain · {launchState?.sponsoredLaunch || useCredit ? "platform-sponsored" : "user-signed"}</small></div>
     <div className="launch-status"><span>{isConfirmed ? "✓" : busy || isPollingLaunch ? "…" : "→"}</span><div><b>{status}</b>{address && <small>{address.slice(0, 8)}…{address.slice(-6)}</small>}</div></div>
-    {!sponsorReady && creditStatus === "AVAILABLE" && <div className="credit-warning"><b>Free credit protected</b><p>The reimbursement wallet is not funded yet. You can keep the credit and launch by paying the live pons fee yourself.</p></div>}
-    {creditStatus === "AVAILABLE" && <label className="switch-row"><input type="checkbox" checked={useCredit} disabled={!sponsorReady || Boolean(quote) || hasActiveLaunch} onChange={(event) => setUseCredit(event.target.checked)} /><span><b>Use free launch credit</b><small>{sponsorReady ? "Verified pons fee reimbursed after confirmation" : "Awaiting sponsor funding"}</small></span></label>}
+    {!sponsorReady && creditStatus === "AVAILABLE" && <div className="credit-warning"><b>Free credit protected</b><p>The platform launch wallet is not ready yet. You can keep the credit or turn it off and launch from your own wallet.</p></div>}
+    {creditStatus === "AVAILABLE" && <label className="switch-row"><input type="checkbox" checked={useCredit} disabled={!sponsorReady || Boolean(quote) || hasActiveLaunch} onChange={(event) => setUseCredit(event.target.checked)} /><span><b>Use one free sponsored launch</b><small>{sponsorReady ? "Platform wallet pays the Pons fee and network gas" : "Platform wallet unavailable"}</small></span></label>}
     {quote && <div className="cost-card"><div><span>pons launch fee</span><b>{formatEther(BigInt(quote.costs.launchFeeWei))} ETH</b></div><div><span>Network gas</span><b>{quote.costs.gas}</b></div><div><span>Curve trade fee</span><b>{Number(quote.config.curveFeeBps) / 100}%</b></div><div><span>Graduation target</span><b>{formatEther(BigInt(quote.config.graduationThreshold))} ETH</b></div></div>}
-    <div className="risk-copy">pons V2 audits are still in progress. Tokens are volatile. Check the target, value, and chain in your wallet before approval.</div>
+    <div className="risk-copy">pons V2 audits are still in progress. Tokens are volatile. {useCredit || launchState?.sponsoredLaunch ? "The platform wallet submits this one free launch; your connected wallet is not charged." : "Check the target, value, and chain in your wallet before approval."}</div>
     {error && <p className="error-copy">{error}</p>}
     {txHash && <a className="tx-link" href={`https://robinhoodchain.blockscout.com/tx/${txHash}`} target="_blank" rel="noreferrer">View submitted transaction ↗</a>}
-    {rebateStatus && rebateStatus !== "NOT_APPLICABLE" && <div className={rebateStatus === "FAILED" ? "failure-card" : "credit-warning"}><b>Fee reimbursement: {rebateStatus.toLowerCase()}</b><p>{rebateStatus === "SENT" ? "The exact verified launch fee was returned after two confirmations." : rebateStatus === "FAILED" ? "The launch remains live; this payout is recorded for operator review." : "The durable worker will resume this payout if it is interrupted."}</p></div>}
-    {rebateTxHash && <a className="tx-link" href={`https://robinhoodchain.blockscout.com/tx/${rebateTxHash}`} target="_blank" rel="noreferrer">View reimbursement transaction ↗</a>}
+    {!launchState?.sponsoredLaunch && rebateStatus && rebateStatus !== "NOT_APPLICABLE" && <div className={rebateStatus === "FAILED" ? "failure-card" : "credit-warning"}><b>Fee reimbursement: {rebateStatus.toLowerCase()}</b><p>{rebateStatus === "SENT" ? "The exact verified launch fee was returned after two confirmations." : rebateStatus === "FAILED" ? "The launch remains live; this payout is recorded for operator review." : "The durable worker will resume this payout if it is interrupted."}</p></div>}
+    {!launchState?.sponsoredLaunch && rebateTxHash && <a className="tx-link" href={`https://robinhoodchain.blockscout.com/tx/${rebateTxHash}`} target="_blank" rel="noreferrer">View reimbursement transaction ↗</a>}
     {confirmedToken && <a className="button button-primary button-wide" href={`/game/${confirmedToken}`}>Open permanent game page</a>}
     {tradingUrl && <a className="tx-link" href={tradingUrl} target="_blank" rel="noreferrer">Trade on pons ↗</a>}
-    {!isConfirmed && <div className="launch-actions">{isPollingLaunch ? <p className="muted-copy">Confirmation is saved in the database and will continue without this browser.</p> : quote && txHash ? <button className="button button-primary button-wide" disabled={recoveringSubmission || busy} onClick={() => recoverSubmission(quote, txHash)}>{recoveringSubmission ? "Recovering…" : "Resume submitted launch"}</button> : hasActiveLaunch && !quote ? <p className="muted-copy">{isAwaitingSignature ? "Reconnect the original wallet and browser session to sign this reserved quote. It will expire safely if left unsigned." : "The saved launch is active. This page will not create a conflicting quote."}</p> : !isConnected ? <p className="muted-copy">Connect a wallet from the top bar first.</p> : !verified ? <button className="button button-primary button-wide" disabled={busy} onClick={verifyWallet}>{busy ? "Verifying…" : "Verify connected wallet"}</button> : !quote ? <button className="button button-primary button-wide" disabled={busy || hasActiveLaunch} onClick={getQuote}>{busy ? "Reading contracts…" : "Read exact launch cost"}</button> : <button className="button button-primary button-wide" disabled={busy || recoveringSubmission || Boolean(txHash)} onClick={launch}>{busy || recoveringSubmission ? "Waiting…" : "Launch game and token"}</button>}</div>}
+    {!isConfirmed && <div className="launch-actions">{isPollingLaunch ? <p className="muted-copy">{launchState?.sponsoredLaunch ? "The platform wallet is processing this free launch. You can safely leave; it continues without this browser." : "Confirmation is saved in the database and will continue without this browser."}</p> : quote && txHash ? <button className="button button-primary button-wide" disabled={recoveringSubmission || busy} onClick={() => recoverSubmission(quote, txHash)}>{recoveringSubmission ? "Recovering…" : "Resume submitted launch"}</button> : hasActiveLaunch && !quote ? <p className="muted-copy">{isAwaitingSignature ? launchState?.sponsoredLaunch ? "The platform wallet is preparing this free launch. No payment confirmation is required in your wallet." : "Reconnect the original wallet and browser session to sign this reserved quote. It will expire safely if left unsigned." : "The saved launch is active. This page will not create a conflicting quote."}</p> : !isConnected ? <p className="muted-copy">Connect a wallet from the top bar first.</p> : !verified ? <button className="button button-primary button-wide" disabled={busy} onClick={verifyWallet}>{busy ? "Verifying…" : "Verify connected wallet"}</button> : !quote ? <button className="button button-primary button-wide" disabled={busy || hasActiveLaunch} onClick={getQuote}>{busy ? useCredit ? "Starting free launch…" : "Reading contracts…" : useCredit ? "Launch free with platform wallet" : "Read exact launch cost"}</button> : <button className="button button-primary button-wide" disabled={busy || recoveringSubmission || Boolean(txHash)} onClick={launch}>{busy || recoveringSubmission ? "Waiting…" : "Launch game and token"}</button>}</div>}
   </div>;
 }

@@ -30,13 +30,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       launch_fee_wei: string;
       token_params: PonsTokenParams;
       free_credit_id: string | null;
+      sponsored_launch: boolean;
     }>(
-      `SELECT status,transaction_hash,wallet_address,factory_address,pair_token,launch_config_id,launch_fee_wei,token_params,free_credit_id
+      `SELECT status,transaction_hash,wallet_address,factory_address,pair_token,launch_config_id,launch_fee_wei,token_params,free_credit_id,sponsored_launch
        FROM pons_launches WHERE id=$1 AND user_id=$2 LIMIT 1`,
       [id, session.user.id],
     );
     const snapshot = snapshotResult.rows[0];
     if (!snapshot) return NextResponse.json({ error: "Launch quote not found." }, { status: 404 });
+    if (snapshot.sponsored_launch) {
+      return NextResponse.json({ error: "This free launch is submitted by the platform worker; no creator-wallet transaction is accepted." }, { status: 409 });
+    }
     if (["SUBMITTED", "CONFIRMING", "CONFIRMED"].includes(snapshot.status)) {
       if (snapshot.transaction_hash?.toLowerCase() !== body.transactionHash.toLowerCase()) {
         return NextResponse.json({ error: "A different transaction is already attached to this launch." }, { status: 409 });
