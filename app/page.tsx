@@ -45,8 +45,8 @@ export default async function HomePage() {
         <p>Watch the complete Gamepad flow—from the first idea to a live game and token—in under twenty seconds.</p>
       </div>
       <div className="home-walkthrough-player">
-        <video autoPlay muted loop playsInline controls preload="metadata" poster="/gamepad-walkthrough-poster.jpg" aria-label="Gamepad product walkthrough">
-          <source src="/gamepad-walkthrough.mp4" type="video/mp4" />
+        <video autoPlay muted loop playsInline controls preload="metadata" poster="/gamepad-walkthrough-poster-hd.jpg" aria-label="Gamepad product walkthrough">
+          <source src="/gamepad-walkthrough-hd.mp4" type="video/mp4" />
         </video>
       </div>
       <div className="home-walkthrough-footer">
