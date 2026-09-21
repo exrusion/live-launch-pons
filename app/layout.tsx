@@ -10,7 +10,7 @@ import { Footer } from "@/components/footer";
 export const metadata: Metadata = {
   title: { default: "gamepad.markets", template: "%s · gamepad.markets" },
   description: "Create a playable game, launch its token through pons, and let the market play on Robinhood Chain.",
-  icons: { icon: "/favicon.svg" },
+  icons: { icon: "/gamepad-logo.png", apple: "/gamepad-logo.png" },
 };
 
 const RAILWAY_ORIGIN = "https://gamepad.markets";

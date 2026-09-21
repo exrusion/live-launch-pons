@@ -19,7 +19,7 @@ function appConfig(appUrl: string) {
         name: "gamepad.markets",
         description: "Create and play token-powered games",
         url: origin,
-        icons: [`${origin}/favicon.svg`],
+        icons: [`${origin}/gamepad-logo.png`],
       },
       showQrModal: true,
     })] : []),

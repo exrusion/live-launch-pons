@@ -36,6 +36,7 @@ img { max-width: 100%; display: block; }
 .logo-mark i:first-child { position: absolute; width: 16px; height: 20px; border: 4px solid #07110d; border-radius: 7px 9px 9px 7px; left: 8px; top: 7px; }
 .logo-mark i:nth-child(2) { position: absolute; width: 9px; height: 4px; background: #07110d; left: 18px; top: 15px; border-radius: 4px; }
 .logo-mark i:nth-child(3) { position: absolute; width: 4px; height: 4px; background: var(--yellow); left: 15px; top: 12px; border-radius: 50%; }
+.logo-mark img { width: 100%; height: 100%; object-fit: contain; display: block; transform: scale(1.38); filter: drop-shadow(0 6px 12px rgba(31, 84, 47, .18)); }
 .logo-mark.large { width: 56px; height: 56px; border-radius: 18px; transform: scale(1.18); margin-bottom: 22px; }
 .site-nav { display: flex; align-items: center; gap: 27px; margin-right: auto; }
 .site-nav a { color: var(--muted); font-size: 14px; font-weight: 700; transition: .2s ease; }

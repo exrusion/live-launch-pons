@@ -25,7 +25,7 @@ export default function SignInPage() {
   return (
     <main className="shell narrow-page">
       <section className="auth-card">
-        <span className="logo-mark large" aria-hidden="true"><i /><i /><i /></span>
+        <span className="logo-mark large" aria-hidden="true"><img src="/gamepad-logo.png" alt="" /></span>
         <span className="eyebrow">One-time creator credit</span>
         <h1>Launch your first game with X.</h1>
         <p>Verify one X account to unlock one Pons launch-fee credit. After confirmation, the verified launch fee is returned automatically; network gas still applies.</p>
