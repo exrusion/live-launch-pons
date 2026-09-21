@@ -138,16 +138,34 @@ export const authOptions: NextAuthOptions = {
                 client_id: clientId,
                 code_verifier: String(checks.code_verifier || ""),
               });
-              const response = await fetch(X_OAUTH_TOKEN_URL, {
+              const exchange = (authorization?: string) => fetch(X_OAUTH_TOKEN_URL, {
                 method: "POST",
                 headers: {
                   Accept: "application/json",
-                  Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+                  ...(authorization ? { Authorization: authorization } : {}),
                   "Content-Type": "application/x-www-form-urlencoded",
                 },
                 body,
               });
-              const tokens = await response.json() as Record<string, unknown>;
+              let response = await exchange(
+                `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+              );
+              let tokens = await response.json() as Record<string, unknown>;
+              const firstCode = typeof tokens.error === "string" ? tokens.error : "";
+              const firstDescription = typeof tokens.error_description === "string" ? tokens.error_description : "";
+
+              // X supports both confidential Web/Bot clients and public
+              // Native/SPA clients. Public clients authenticate the PKCE
+              // exchange with client_id in the body and no Basic header.
+              if (
+                response.status === 401
+                && firstCode === "unauthorized_client"
+                && /authorization header/i.test(firstDescription)
+              ) {
+                console.warn("X OAuth confidential exchange rejected; retrying as a PKCE public client");
+                response = await exchange();
+                tokens = await response.json() as Record<string, unknown>;
+              }
               if (!response.ok) {
                 const code = typeof tokens.error === "string" ? tokens.error : "token_exchange_failed";
                 const description = typeof tokens.error_description === "string"
