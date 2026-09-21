@@ -137,6 +137,7 @@ export const authOptions: NextAuthOptions = {
       const x = xProfile(profile, account.providerAccountId);
       const cookieStore = await cookies();
       const anonymousUserId = parse(cookieStore.get(COOKIE_NAME)?.value);
+      let linkedUserId = "";
 
       await transaction(async (client) => {
         // A row lock cannot serialize two first logins when the X account does
@@ -176,6 +177,7 @@ export const authOptions: NextAuthOptions = {
           );
           userId = created.rows[0].id;
         }
+        linkedUserId = userId;
 
         const accountRow = await client.query<{ id: string }>(
           `INSERT INTO x_accounts(user_id,provider_user_id,username,profile_image_url)
@@ -202,10 +204,23 @@ export const authOptions: NextAuthOptions = {
           [userId, accountRow.rows[0].id],
         );
       });
+      // Always replace the pre-login anonymous creator cookie. Returning X
+      // users can otherwise fall back to an unrelated anonymous identity if
+      // the NextAuth session is refreshed during the OAuth round trip.
+      if (!linkedUserId) throw new Error("X_ACCOUNT_LINK_FAILED");
+      cookieStore.set(COOKIE_NAME, issue(linkedUserId), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: MAX_AGE,
+      });
       return true;
     },
     async jwt({ token, account, profile }) {
-      const providerId = account?.providerAccountId || (typeof token.xId === "string" ? token.xId : undefined);
+      const providerId = account?.providerAccountId
+        || (typeof token.xId === "string" && token.xId ? token.xId : undefined)
+        || (typeof token.sub === "string" && token.sub ? token.sub : undefined);
       if (account?.providerAccountId) token.xId = account.providerAccountId;
       if (profile) {
         const x = xProfile(profile, account?.providerAccountId || "");
