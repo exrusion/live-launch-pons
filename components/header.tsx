@@ -37,6 +37,20 @@ export function Header() {
   };
   const xLabel = xEnabled === null ? "Checking X…" : xEnabled ? "Sign up with X" : xError ? "Retry X" : "X setup pending";
 
+  if (pathname === "/walkthrough") return <header className="walkthrough-site-header"><div className="walkthrough-header-inner">
+    <Logo />
+    <nav className={menu ? "walkthrough-nav nav-open" : "walkthrough-nav"} aria-label="Walkthrough navigation">
+      <a href="#walkthrough-overview" onClick={() => setMenu(false)}>Overview</a>
+      <a href="#walkthrough-demo" onClick={() => setMenu(false)}>Demo</a>
+      <a href="#walkthrough-roadmap" onClick={() => setMenu(false)}>Roadmap</a>
+      <Link className="walkthrough-mobile-cta" href="/create" onClick={() => setMenu(false)}>Start Creating</Link>
+    </nav>
+    <div className="walkthrough-header-actions">
+      <Link className="walkthrough-start-button" href="/create">Start Creating <span>↗</span></Link>
+      <button className="walkthrough-menu-button" type="button" onClick={() => setMenu((value) => !value)} aria-label="Toggle walkthrough menu" aria-expanded={menu}>{menu ? "Close" : "Menu"}</button>
+    </div>
+  </div></header>;
+
   return <header className="site-header"><div className="shell header-inner">
     <Logo />
     <nav className={menu ? "site-nav nav-open" : "site-nav"} aria-label="Main navigation">

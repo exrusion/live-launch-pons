@@ -1,267 +1,93 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-const SCENE_DURATION = 4400;
+const STAGE_DURATION = 5600;
 
-const scenes = [
-  {
-    id: "prompt",
-    number: "01",
-    label: "Prompt",
-    eyebrow: "Start with an idea",
-    title: "Describe the game you want to play.",
-    copy: "Set the world, the character, and the challenge. Gamepad turns a plain-language prompt into a real first build.",
-  },
-  {
-    id: "build",
-    number: "02",
-    label: "Build",
-    eyebrow: "Generation in motion",
-    title: "Watch the first version take shape.",
-    copy: "The game loop, art direction, controls, and scoring system are assembled into a playable preview.",
-  },
-  {
-    id: "play",
-    number: "03",
-    label: "Playtest",
-    eyebrow: "Play before launch",
-    title: "Test the feel, then keep iterating.",
-    copy: "Run the real game in your browser, check the controls, and refine the prompt before anything goes onchain.",
-  },
-  {
-    id: "launch",
-    number: "04",
-    label: "Launch",
-    eyebrow: "Powered by Pons",
-    title: "Turn the finished build into a market.",
-    copy: "Review the token details, connect your wallet, and sign the official launch through Pons on Robinhood Chain.",
-  },
-  {
-    id: "market",
-    number: "05",
-    label: "Go live",
-    eyebrow: "The game is live",
-    title: "Players arrive. The world keeps growing.",
-    copy: "Every game gets a public home for play, market activity, verified runs, and future versions from its creator.",
-  },
+const stages = [
+  { id: "idea", number: "01", label: "Idea", eyebrow: "Create freely", title: "Start with one game idea.", copy: "Connect a supported injected or WalletConnect wallet, then shape the token details and the game in one private draft." },
+  { id: "generate", number: "02", label: "Generate", eyebrow: "AI-directed build", title: "Turn the prompt into a safe playable build.", copy: "AI directs a validated blueprint while Gamepad keeps the executable HTML5 runtime inside its controlled sandbox." },
+  { id: "play", number: "03", label: "Play", eyebrow: "Test before launch", title: "Play it, refine it, and freeze the version.", copy: "Use keyboard, pointer, or touch controls. Edit the prompt and regenerate until the build feels right—nothing is on-chain yet." },
+  { id: "launch", number: "04", label: "Launch", eyebrow: "Pons V2 · Robinhood Chain", title: "Review the real launch, then confirm in your wallet.", copy: "Gamepad reads the official Pons factory, prepares the launchToken call, and waits for your wallet. This walkthrough never sends a transaction." },
+  { id: "vote", number: "05", label: "Vote", eyebrow: "Phase 2 · Coming Soon", title: "Let verified holders shape what ships next.", copy: "The planned governance layer covers characters, maps, gameplay upgrades, and tournament formats after holder snapshots are enabled." },
+  { id: "compete", number: "06", label: "Compete", eyebrow: "Phase 3 · Coming Soon", title: "Turn every version into a competitive season.", copy: "Verified runs and leaderboards are live today. Tournament creation and prize pools remain disabled until the reward path is audited." },
+  { id: "reward", number: "07", label: "Reward", eyebrow: "Phase 3 · Coming Soon", title: "Close the loop with a verified winner.", copy: "The intended reward flow funds a declared pool and pays the winner in the project token—only after vault and payout accounting are audited." },
 ] as const;
 
-type SceneId = (typeof scenes)[number]["id"];
+type StageId = (typeof stages)[number]["id"];
+const generationSteps = ["Understanding the prompt", "Creating game mechanics", "Generating visuals", "Building levels", "Testing controls", "Preparing playable preview"];
 
-function SceneVisual({ id }: { id: SceneId }) {
-  if (id === "prompt") {
-    return (
-      <div className="walkthrough-prompt-scene" aria-hidden="true">
-        <div className="walkthrough-prompt-head">
-          <span><i /> New game</span>
-          <small>AI creator</small>
-        </div>
-        <p>
-          Build a neon rooftop runner where a tiny robot races the sunrise,
-          collects battery cells, and dodges delivery drones.<span className="walkthrough-cursor" />
-        </p>
-        <div className="walkthrough-prompt-tags">
-          <span>Runner</span><span>Neon city</span><span>Keyboard</span>
-        </div>
-        <div className="walkthrough-generate-button">
-          <span>Generate first build</span><b>↗</b>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "build") {
-    return (
-      <div className="walkthrough-build-scene" aria-hidden="true">
-        <div className="walkthrough-build-orbit">
-          <i /><i /><i />
-          <span>G</span>
-        </div>
-        <div className="walkthrough-build-list">
-          <div className="is-complete"><span>World + art direction</span><b>Done</b></div>
-          <div className="is-complete"><span>Movement + controls</span><b>Done</b></div>
-          <div className="is-active"><span>Scoring + game loop</span><b>Building</b></div>
-          <div><span>Playable preview</span><b>Next</b></div>
-        </div>
-        <div className="walkthrough-build-time"><b>00:38</b><span>First build is almost ready</span></div>
-      </div>
-    );
-  }
-
-  if (id === "play") {
-    return (
-      <div className="walkthrough-game-scene" aria-hidden="true">
-        <div className="walkthrough-game-hud">
-          <span>SCORE <b>02480</b></span>
-          <strong>NEON DAWN</strong>
-          <span>BEST <b>06120</b></span>
-        </div>
-        <div className="walkthrough-game-sun" />
-        <div className="walkthrough-city city-back" />
-        <div className="walkthrough-city city-front" />
-        <div className="walkthrough-game-platform platform-one" />
-        <div className="walkthrough-game-platform platform-two" />
-        <div className="walkthrough-game-platform platform-three" />
-        <div className="walkthrough-game-runner"><i /><b /></div>
-        <div className="walkthrough-game-drone"><i /><i /></div>
-        <div className="walkthrough-game-coin coin-one" />
-        <div className="walkthrough-game-coin coin-two" />
-        <div className="walkthrough-game-tip"><span>SPACE</span> jump</div>
-      </div>
-    );
-  }
-
-  if (id === "launch") {
-    return (
-      <div className="walkthrough-launch-scene" aria-hidden="true">
-        <div className="walkthrough-launch-head">
-          <div className="walkthrough-token-mark">ND</div>
-          <div><small>Token launch</small><strong>Neon Dawn</strong><span>$DAWN</span></div>
-          <b>Ready</b>
-        </div>
-        <div className="walkthrough-launch-grid">
-          <div><span>Network</span><b>Robinhood Chain</b></div>
-          <div><span>Launch route</span><b>Pons</b></div>
-          <div><span>Game build</span><b>v1 verified</b></div>
-          <div><span>Creator</span><b>0x19…7D2A</b></div>
-        </div>
-        <div className="walkthrough-sign-row">
-          <span><i /> Wallet connected</span>
-          <button type="button" tabIndex={-1}>Sign &amp; launch <b>↗</b></button>
-        </div>
-        <p>One signature publishes the game and starts its official Pons market.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="walkthrough-market-scene" aria-hidden="true">
-      <div className="walkthrough-market-head">
-        <div className="walkthrough-token-mark">ND</div>
-        <div><strong>Neon Dawn <span>$DAWN</span></strong><small>Created by @runnerzero</small></div>
-        <b><i /> Live</b>
-      </div>
-      <div className="walkthrough-market-price">
-        <div><small>Market price</small><strong>$0.00482</strong><span>+18.4%</span></div>
-        <div className="walkthrough-market-chart">
-          <svg viewBox="0 0 320 100" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id="market-fill" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0" stopColor="#d4fc50" stopOpacity=".36" />
-                <stop offset="1" stopColor="#d4fc50" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path className="market-area" d="M0,91 C25,84 28,76 50,78 C75,80 79,61 102,65 C130,70 135,43 158,48 C180,52 190,37 210,42 C236,47 244,19 270,27 C288,32 296,14 320,8 L320,100 L0,100 Z" />
-            <path className="market-line" d="M0,91 C25,84 28,76 50,78 C75,80 79,61 102,65 C130,70 135,43 158,48 C180,52 190,37 210,42 C236,47 244,19 270,27 C288,32 296,14 320,8" />
-          </svg>
-        </div>
-      </div>
-      <div className="walkthrough-market-stats">
-        <div><span>Market cap</span><b>$482K</b></div>
-        <div><span>Verified runs</span><b>1,284</b></div>
-        <div><span>Top score</span><b>96,410</b></div>
-      </div>
-      <div className="walkthrough-market-activity"><i /><span>New run from 0xB7…92E</span><b>+8,240 pts</b></div>
-    </div>
-  );
+function IdeaScene() {
+  return <div className="gamed-idea-scene">
+    <div className="gamed-wallet-row"><span className="is-selected"><i /> Injected wallet</span><span>WalletConnect</span><b>Connected</b></div>
+    <div className="gamed-form-grid"><label><span>Game name</span><strong>Neon Dawn</strong></label><label><span>Token ticker</span><strong>$DAWN</strong></label></div>
+    <label className="gamed-wide-field"><span>Description</span><strong>A rooftop runner racing the sunrise.</strong></label>
+    <div className="gamed-prompt-box"><span>Game prompt</span><p>Build a neon rooftop runner where a tiny robot collects battery cells and dodges delivery drones.<i /></p></div>
+    <div className="gamed-detail-row"><span><b>ND</b> Token image</span><span>𝕏 @runnerzero</span><span>↗ game.example</span></div>
+  </div>;
 }
+
+function GenerateScene() {
+  return <div className="gamed-generate-scene"><div className="gamed-ai-core"><span>G</span><i /><i /><i /></div><div className="gamed-generation-copy"><div className="gamed-generation-head"><div><small>AI build pipeline</small><strong>Generating Neon Dawn</strong></div><b>10–20 sec</b></div><div className="gamed-generation-list">{generationSteps.map((step, index) => <div key={step} style={{ "--step-delay": `${index * .48}s` } as CSSProperties}><i /><span>{step}</span><b>{index === generationSteps.length - 1 ? "Preview" : "Done"}</b></div>)}</div><div className="gamed-generation-progress"><i /><span>Validated blueprint · sandboxed runtime</span></div></div></div>;
+}
+
+function PlayScene() {
+  return <div className="gamed-play-scene"><div className="gamed-mini-browser"><header><i /><i /><i /><span>gamepad.markets / preview</span><b>v1</b></header><div className="gamed-game-world"><div className="gamed-game-score">SCORE <b>02480</b></div><div className="gamed-game-sun" /><div className="gamed-game-city" /><div className="gamed-game-platform" /><div className="gamed-game-runner"><i /><b /></div><div className="gamed-game-drone"><i /><i /></div><div className="gamed-keyboard"><span>←</span><span className="is-pressed">SPACE</span><span>→</span></div></div></div><div className="gamed-version-editor"><span>Edit game prompt</span><p>Add a second drone after 30 seconds and make battery cells glow brighter.<i /></p><div><b>v1 frozen</b><i>→</i><strong>Generate v2</strong></div><small>Creator-published AI versions · Phase 2 coming soon</small></div></div>;
+}
+
+function LaunchScene() {
+  return <div className="gamed-launch-scene"><div className="gamed-launch-summary"><div className="gamed-token-orb">ND</div><div><small>Official launch route</small><strong>Neon Dawn <span>$DAWN</span></strong><p>Frozen game build v1</p></div><b>Ready</b></div><div className="gamed-launch-facts"><div><span>Launchpad</span><b>Pons V2</b></div><div><span>Network</span><b>Robinhood Chain</b></div><div><span>Pair</span><b>Native ETH</b></div><div><span>Status</span><b>Awaiting signature</b></div></div><div className="gamed-wallet-modal"><header><span>Wallet confirmation</span><b>Walkthrough Example</b></header><div><span>Contract</span><strong>Pons V2 Factory</strong></div><div><span>Action</span><strong>launchToken</strong></div><div><span>Approval</span><strong>Not submitted</strong></div><footer><button type="button" tabIndex={-1}>Cancel</button><button type="button" tabIndex={-1}>Review in wallet</button></footer></div></div>;
+}
+
+function VoteScene() {
+  const votes = [["New character", 42], ["New map", 31], ["Gameplay upgrade", 18], ["Next tournament format", 9]] as const;
+  return <div className="gamed-vote-scene"><header><div><small>Holder proposal #12</small><strong>What should ship in v2?</strong></div><span>Coming Soon</span></header><div className="gamed-vote-list">{votes.map(([label, value], index) => <div key={label} style={{ "--vote-delay": `${index * .18}s`, "--vote-width": `${value}%` } as CSSProperties}><span><b>{label}</b><strong>{value}%</strong></span><i /></div>)}</div><footer><span>Snapshot source</span><b>Verified token holders</b><small>Voting is not active yet</small></footer></div>;
+}
+
+function CompeteScene() {
+  return <div className="gamed-compete-scene"><div className="gamed-bracket"><header><span>Neon Dawn Open</span><b>Coming Soon</b></header><div className="gamed-bracket-grid"><div><span>0x8A…11F <b>8,240</b></span><span>0x41…90C <b>6,180</b></span></div><i /><div><span className="winner">0x8A…11F <b>Final</b></span></div><i /><div><span className="pending">Winner</span></div></div></div><div className="gamed-live-board"><header><span>Live leaderboard</span><b>Verified runs</b></header>{[["01", "0x8A…11F", "8,240"], ["02", "0xB7…92E", "7,980"], ["03", "0x41…90C", "6,180"]].map((row) => <div key={row[0]}><span>{row[0]}</span><b>{row[1]}</b><strong>{row[2]}</strong></div>)}</div></div>;
+}
+
+function RewardScene() {
+  return <div className="gamed-reward-scene"><div className="gamed-confetti">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ "--confetti-x": `${(index * 37) % 100}%`, "--confetti-delay": `${(index % 7) * .12}s` } as CSSProperties} />)}</div><div className="gamed-trophy">★</div><span className="gamed-coming-pill">Phase 3 · Coming Soon</span><h3>0x8A…11F wins the season</h3><p>Verified first place · Neon Dawn Open</p><div className="gamed-pool-counter"><span>Prize pool</span><strong>12,480 <b>$DAWN</b></strong><small>Walkthrough Example · No funds moved</small></div><div className="gamed-reward-flow"><span>Configured fee flow</span><i>→</i><span>Audited reward vault</span><i>→</i><b>Winner payout</b></div></div>;
+}
+
+function StageVisual({ id }: { id: StageId }) {
+  if (id === "idea") return <IdeaScene />;
+  if (id === "generate") return <GenerateScene />;
+  if (id === "play") return <PlayScene />;
+  if (id === "launch") return <LaunchScene />;
+  if (id === "vote") return <VoteScene />;
+  if (id === "compete") return <CompeteScene />;
+  return <RewardScene />;
+}
+
+const floatCards = [["Game Prompt", "One idea becomes a validated game direction."], ["AI Generation", "Blueprint first. Trusted runtime second."], ["Playable Build", "Keyboard, pointer, and touch controls."], ["Token Launch", "Official Pons V2 factory on Robinhood Chain."], ["Holder Vote", "Verified snapshots · Coming Soon"], ["Tournament", "Audited competition flow · Coming Soon"], ["Prize Pool", "Declared and funded rewards · Coming Soon"], ["Permanent Version", "Every published build stays immutable."]] as const;
 
 export function GamepadWalkthroughCinema({ embedded = false }: { embedded?: boolean }) {
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const scene = scenes[active];
+  const [visible, setVisible] = useState(!embedded);
+  const [tabActive, setTabActive] = useState(true);
+  const rootRef = useRef<HTMLElement>(null);
+  const stage = stages[active];
 
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setPlaying(false);
-  }, []);
+  useEffect(() => { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) setPlaying(false); }, []);
+  useEffect(() => { const onVisibility = () => setTabActive(document.visibilityState === "visible"); document.addEventListener("visibilitychange", onVisibility); return () => document.removeEventListener("visibilitychange", onVisibility); }, []);
+  useEffect(() => { if (!embedded || !rootRef.current) { setVisible(true); return; } const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting && entry.intersectionRatio > .2), { threshold: [.2, .5] }); observer.observe(rootRef.current); return () => observer.disconnect(); }, [embedded]);
+  useEffect(() => { if (!playing || !visible || !tabActive) return; const timer = window.setTimeout(() => setActive((current) => (current + 1) % stages.length), STAGE_DURATION); return () => window.clearTimeout(timer); }, [active, playing, visible, tabActive]);
 
-  useEffect(() => {
-    if (!playing) return;
-    const timer = window.setTimeout(() => {
-      setActive((current) => (current + 1) % scenes.length);
-    }, SCENE_DURATION);
-    return () => window.clearTimeout(timer);
-  }, [active, playing]);
+  const restart = () => { setActive(0); setPlaying(true); };
+  const livePlaying = playing && visible && tabActive;
 
-  function restart() {
-    setActive(0);
-    setPlaying(true);
-  }
-
-  return (
-      <section className={`walkthrough-cinema shell ${embedded ? "is-embedded" : ""} ${playing ? "is-playing" : "is-paused"}`} aria-label="Gamepad product walkthrough">
-        <div className="walkthrough-chrome">
-          <span className="walkthrough-chrome-dots" aria-hidden="true"><i /><i /><i /></span>
-          <span className="walkthrough-address">gamepad.markets / create</span>
-          <span className="walkthrough-demo-state"><i /> Live demo</span>
-        </div>
-
-        <div className="walkthrough-stage">
-          <div className="walkthrough-copy-panel" key={`copy-${scene.id}`}>
-            <div className="walkthrough-scene-meta">
-              <span>{scene.eyebrow}</span><b>{scene.number} / 05</b>
-            </div>
-            <h2>{scene.title}</h2>
-            <p>{scene.copy}</p>
-            <div className="walkthrough-now-playing">
-              <span>{playing ? "Now playing" : "Paused"}</span>
-              <b>{scene.label}</b>
-            </div>
-          </div>
-
-          <div className="walkthrough-demo-panel" key={`visual-${scene.id}`}>
-            <SceneVisual id={scene.id} />
-          </div>
-        </div>
-
-        <div className="walkthrough-controls">
-          <button className="walkthrough-control-button" type="button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? "Pause walkthrough" : "Play walkthrough"}>
-            <span aria-hidden="true">{playing ? "Ⅱ" : "▶"}</span>
-          </button>
-
-          <div className="walkthrough-timeline" aria-label="Walkthrough scenes">
-            {scenes.map((item, index) => (
-              <button
-                className={index === active ? "is-active" : index < active ? "is-complete" : ""}
-                key={item.id}
-                type="button"
-                aria-pressed={index === active}
-                aria-label={`Scene ${item.number}: ${item.label}`}
-                onClick={() => setActive(index)}
-              >
-                <span><b>{item.number}</b>{item.label}</span>
-                <i />
-              </button>
-            ))}
-          </div>
-
-          <button className="walkthrough-restart" type="button" onClick={restart} aria-label="Restart walkthrough">
-            <span aria-hidden="true">↻</span><b>Restart</b>
-          </button>
-        </div>
-      </section>
-  );
+  return <section ref={rootRef} className={`gamed-walkthrough-cinema ${embedded ? "is-embedded" : ""} ${livePlaying ? "is-playing" : "is-paused"}`} aria-label="Gamed Markets product walkthrough">
+    <div className="gamed-cinema-chrome"><span><i /><i /><i /></span><b>gamepad.markets / studio</b><small><i /> Interactive demo</small></div>
+    <div className="gamed-cinema-stage"><div className="gamed-stage-copy" key={`copy-${stage.id}`}><div><span>{stage.eyebrow}</span><b>{stage.number} / 07</b></div><h2>{stage.title}</h2><p>{stage.copy}</p><footer><span>{livePlaying ? "Now playing" : "Paused"}</span><b>{stage.label}</b></footer></div><div className="gamed-stage-visual" key={`visual-${stage.id}`}><StageVisual id={stage.id} /></div></div>
+    <div className="gamed-cinema-controls"><button className="gamed-play-control" type="button" onClick={() => setPlaying((value) => !value)} aria-label={playing ? "Pause walkthrough" : "Play walkthrough"}>{playing ? "Ⅱ" : "▶"}</button><div className="gamed-stage-timeline" aria-label="Walkthrough stages">{stages.map((item, index) => <button key={item.id} className={index === active ? "is-active" : index < active ? "is-complete" : ""} type="button" aria-pressed={index === active} onClick={() => setActive(index)}><span><b>{item.number}</b>{item.label}</span><i /></button>)}</div><button className="gamed-restart-control" type="button" onClick={restart}><span>↻</span><b>Restart</b></button></div>
+  </section>;
 }
 
 export function GamepadWalkthrough() {
-  return (
-    <main className="walkthrough-page">
-      <section className="walkthrough-hero shell">
-        <div>
-          <span className="walkthrough-kicker"><i /> Interactive walkthrough</span>
-          <h1>From a prompt to a <span>live game market.</span></h1>
-        </div>
-        <p>See the entire Gamepad flow in under a minute. It plays automatically, or use the timeline to jump anywhere.</p>
-      </section>
-
-      <GamepadWalkthroughCinema />
-
-      <section className="walkthrough-end shell">
-        <div><span>Ready when you are</span><h2>Build the game people cannot stop playing.</h2></div>
-        <div><Link className="button button-primary" href="/create">Build a game <span>↗</span></Link><Link className="walkthrough-explore-link" href="/explore">Explore live games</Link></div>
-      </section>
-    </main>
-  );
+  return <main className="gamed-walkthrough-page"><section className="gamed-walkthrough-hero shell" id="walkthrough-overview"><div><span><i /> Interactive product tour</span><h1>Build the game.<br /><b>Launch the market.</b></h1></div><p>Follow the complete production flow—from private prompt and playable preview to a verified Pons launch, then see what the community roadmap unlocks next.</p></section><section className="gamed-walkthrough-world" id="walkthrough-demo"><div className="gamed-float-column gamed-float-left">{floatCards.slice(0,4).map(([title, copy], index) => <article key={title} style={{ "--float-delay": `${index * -1.4}s` } as CSSProperties}><span>0{index + 1}</span><h3>{title}</h3><p>{copy}</p></article>)}</div><GamepadWalkthroughCinema /><div className="gamed-float-column gamed-float-right">{floatCards.slice(4).map(([title, copy], index) => <article key={title} style={{ "--float-delay": `${index * -1.7}s` } as CSSProperties}><span>0{index + 5}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section><section className="gamed-walkthrough-roadmap shell" id="walkthrough-roadmap"><div><span>Live now</span><b>AI-directed builds · Sandboxed games · Pons V2 launches · Verified leaderboards</b></div><div><span>Coming soon</span><b>Holder voting · Creator-published versions · Tournaments · Prize pools</b></div></section><section className="gamed-walkthrough-final shell"><span>Build what people want to play.</span><h2>Launch a coin. Generate its game.<br />Let holders build what comes next.</h2><div><Link className="button button-primary" href="/create">Launch Your Game <span>↗</span></Link><Link className="button button-quiet" href="/explore">Explore Games</Link></div></section></main>;
 }
