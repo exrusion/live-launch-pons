@@ -3908,3 +3908,94 @@ h1, h2, h3 { text-wrap: balance; }
   .walkthrough-copy-panel h2 { font-size: clamp(37px, 10.5vw, 50px); }
   .walkthrough-prompt-scene > p { font-size: 23px; }
 }
+
+/* Creator verification: compact, legible and consistent with the product UI. */
+.auth-page {
+  --font-product-sans: "Manrope Variable", Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  width: min(760px, calc(100% - 40px));
+  min-height: calc(100vh - 76px);
+  padding-block: clamp(46px, 8vh, 92px);
+  font-family: var(--font-product-sans);
+}
+.auth-page .auth-card {
+  padding: clamp(34px, 6vw, 62px);
+  border: 1px solid rgba(17, 17, 17, .07);
+  border-radius: 34px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 24px 70px rgba(32, 48, 77, .08);
+}
+.auth-brand-lockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+.auth-page .logo-mark.large {
+  width: 82px;
+  height: 82px;
+  margin: 0;
+  border-radius: 24px;
+  transform: none;
+  background: #f2f8e9;
+  box-shadow: 0 16px 40px rgba(74, 113, 48, .15);
+}
+.auth-page .logo-mark.large img { transform: scale(1.22); }
+.auth-page .eyebrow {
+  color: #2459d3;
+  font-family: var(--font-product-sans);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .12em;
+}
+.auth-page .auth-card h1 {
+  max-width: 610px;
+  margin: 0 auto 18px;
+  font-family: var(--font-product-sans);
+  font-size: clamp(38px, 6vw, 54px);
+  font-weight: 740;
+  line-height: 1.02;
+  letter-spacing: -.055em;
+}
+.auth-page .auth-card > p:not(.auth-error) {
+  max-width: 580px;
+  margin: 0 auto 28px;
+  color: #667085;
+  font-size: 16px;
+  line-height: 1.65;
+}
+.auth-page .state-row { justify-content: center; margin-bottom: 28px; }
+.auth-page .state-row span { font-family: var(--font-product-sans); font-weight: 700; }
+.auth-page .button-wide {
+  min-height: 58px;
+  border-radius: 18px;
+  font-family: var(--font-product-sans);
+  font-size: 15px;
+  font-weight: 720;
+}
+.auth-page .text-button {
+  display: inline-flex;
+  margin-top: 22px;
+  font-family: var(--font-product-sans);
+  font-weight: 680;
+}
+.auth-error {
+  margin: 14px 0 0;
+  padding: 11px 14px;
+  border: 1px solid #ffd0d8;
+  border-radius: 12px;
+  color: #9d2940;
+  background: #fff3f5;
+  font-size: 13px;
+  line-height: 1.45;
+}
+@media (max-width: 600px) {
+  .auth-page { width: min(100% - 24px, 760px); padding-block: 28px; }
+  .auth-page .auth-card { padding: 30px 22px; border-radius: 26px; }
+  .auth-page .logo-mark.large { width: 70px; height: 70px; border-radius: 21px; }
+  .auth-brand-lockup { gap: 15px; margin-bottom: 24px; }
+  .auth-page .auth-card h1 { font-size: clamp(34px, 11vw, 44px); }
+  .auth-page .auth-card > p:not(.auth-error) { font-size: 15px; }
+  .auth-page .state-row { gap: 8px; }
+  .auth-page .state-row span { padding: 7px 10px; font-size: 11px; }
+}

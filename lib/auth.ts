@@ -125,6 +125,13 @@ export const authOptions: NextAuthOptions = {
           clientId: process.env.X_CLIENT_ID!,
           clientSecret: process.env.X_CLIENT_SECRET!,
           version: "2.0",
+          client: {
+            // X web apps are confidential OAuth clients. The provider's v2
+            // token exchange must authenticate the client, otherwise X sends
+            // `unauthorized_client (Missing valid authorization header)` and
+            // NextAuth redirects the user back to the sign-in screen.
+            token_endpoint_auth_method: "client_secret_basic",
+          },
         }),
       ]
     : [],

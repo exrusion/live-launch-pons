@@ -8,8 +8,10 @@ type PublicConfig = { xAuth?: boolean; freeLaunchRebate?: boolean };
 
 export default function SignInPage() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
+  const [authError, setAuthError] = useState(false);
 
   useEffect(() => {
+    setAuthError(new URLSearchParams(window.location.search).has("error"));
     fetch("/api/config", { cache: "no-store" })
       .then((response) => response.json())
       .then((data: PublicConfig) => setConfig(data))
@@ -23,10 +25,12 @@ export default function SignInPage() {
     void signIn("twitter", { callbackUrl });
   }
   return (
-    <main className="shell narrow-page">
+    <main className="shell narrow-page auth-page">
       <section className="auth-card">
-        <span className="logo-mark large" aria-hidden="true"><img src="/gamepad-logo.png" alt="" /></span>
-        <span className="eyebrow">One-time creator credit</span>
+        <div className="auth-brand-lockup">
+          <span className="logo-mark large" aria-hidden="true"><img src="/gamepad-logo.png" alt="" /></span>
+          <span className="eyebrow">One free creator launch</span>
+        </div>
         <h1>Launch your first game with X.</h1>
         <p>Verify one X account to unlock one Pons launch-fee credit. After confirmation, the verified launch fee is returned automatically; network gas still applies.</p>
         <div className="state-row" aria-label="How the launch credit works">
@@ -39,6 +43,9 @@ export default function SignInPage() {
         >
           {config === null ? "Checking X…" : enabled ? "Continue with X" : "X sign-in unavailable"}
         </button>
+        {authError ? (
+          <p className="auth-error" role="alert">X could not complete sign-in. Please try once more.</p>
+        ) : null}
         {config && !enabled ? (
           <div className="setup-callout">
             <b>Owner setup needed</b>
