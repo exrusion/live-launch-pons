@@ -9,6 +9,7 @@ import { query, transaction } from "@/lib/db";
 
 const COOKIE_NAME = "pons_creator";
 const MAX_AGE = 60 * 60 * 24 * 90;
+const X_OAUTH_TOKEN_URL = "https://api.x.com/2/oauth2/token";
 const xEnabled = Boolean(process.env.X_CLIENT_ID && process.env.X_CLIENT_SECRET);
 const adminXIds = new Set((process.env.ADMIN_X_IDS || "").split(",").map((id) => id.trim()).filter(Boolean));
 
@@ -126,7 +127,7 @@ export const authOptions: NextAuthOptions = {
           clientSecret: process.env.X_CLIENT_SECRET!,
           version: "2.0",
           token: {
-            url: "https://api.twitter.com/2/oauth2/token",
+            url: X_OAUTH_TOKEN_URL,
             async request({ params, checks, provider }) {
               const clientId = process.env.X_CLIENT_ID!;
               const clientSecret = process.env.X_CLIENT_SECRET!;
@@ -137,7 +138,7 @@ export const authOptions: NextAuthOptions = {
                 client_id: clientId,
                 code_verifier: String(checks.code_verifier || ""),
               });
-              const response = await fetch("https://api.twitter.com/2/oauth2/token", {
+              const response = await fetch(X_OAUTH_TOKEN_URL, {
                 method: "POST",
                 headers: {
                   Accept: "application/json",
@@ -149,6 +150,14 @@ export const authOptions: NextAuthOptions = {
               const tokens = await response.json() as Record<string, unknown>;
               if (!response.ok) {
                 const code = typeof tokens.error === "string" ? tokens.error : "token_exchange_failed";
+                const description = typeof tokens.error_description === "string"
+                  ? tokens.error_description.replace(/[\r\n]/g, " ").slice(0, 240)
+                  : "No description returned by X";
+                console.error("X OAuth token exchange rejected", {
+                  status: response.status,
+                  code,
+                  description,
+                });
                 throw new Error(`X_OAUTH_TOKEN_ERROR:${code}`);
               }
               return { tokens };
