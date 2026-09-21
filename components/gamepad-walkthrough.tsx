@@ -168,7 +168,7 @@ function SceneVisual({ id }: { id: SceneId }) {
   );
 }
 
-export function GamepadWalkthrough() {
+export function GamepadWalkthroughCinema({ embedded = false }: { embedded?: boolean }) {
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(true);
   const scene = scenes[active];
@@ -191,16 +191,7 @@ export function GamepadWalkthrough() {
   }
 
   return (
-    <main className="walkthrough-page">
-      <section className="walkthrough-hero shell">
-        <div>
-          <span className="walkthrough-kicker"><i /> Interactive walkthrough</span>
-          <h1>From a prompt to a <span>live game market.</span></h1>
-        </div>
-        <p>See the entire Gamepad flow in under a minute. It plays automatically, or use the timeline to jump anywhere.</p>
-      </section>
-
-      <section className={`walkthrough-cinema shell ${playing ? "is-playing" : "is-paused"}`} aria-label="Gamepad product walkthrough">
+      <section className={`walkthrough-cinema shell ${embedded ? "is-embedded" : ""} ${playing ? "is-playing" : "is-paused"}`} aria-label="Gamepad product walkthrough">
         <div className="walkthrough-chrome">
           <span className="walkthrough-chrome-dots" aria-hidden="true"><i /><i /><i /></span>
           <span className="walkthrough-address">gamepad.markets / create</span>
@@ -251,6 +242,21 @@ export function GamepadWalkthrough() {
           </button>
         </div>
       </section>
+  );
+}
+
+export function GamepadWalkthrough() {
+  return (
+    <main className="walkthrough-page">
+      <section className="walkthrough-hero shell">
+        <div>
+          <span className="walkthrough-kicker"><i /> Interactive walkthrough</span>
+          <h1>From a prompt to a <span>live game market.</span></h1>
+        </div>
+        <p>See the entire Gamepad flow in under a minute. It plays automatically, or use the timeline to jump anywhere.</p>
+      </section>
+
+      <GamepadWalkthroughCinema />
 
       <section className="walkthrough-end shell">
         <div><span>Ready when you are</span><h2>Build the game people cannot stop playing.</h2></div>

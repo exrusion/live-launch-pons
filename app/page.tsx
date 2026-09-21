@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { PromptHero } from "@/components/prompt-hero";
+import { GamepadWalkthroughCinema } from "@/components/gamepad-walkthrough";
 import { exploreGames } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -44,12 +45,10 @@ export default async function HomePage() {
         <p>Watch the complete Gamepad flow—from the first idea to a live game and token—in under twenty seconds.</p>
       </div>
       <div className="home-walkthrough-player">
-        <video autoPlay muted loop playsInline controls preload="metadata" poster="/gamepad-walkthrough-poster-hd.jpg" aria-label="Gamepad product walkthrough">
-          <source src="/gamepad-walkthrough-hd.mp4" type="video/mp4" />
-        </video>
+        <GamepadWalkthroughCinema embedded />
       </div>
       <div className="home-walkthrough-footer">
-        <span><i /> 5 steps · 18 seconds</span>
+        <span><i /> Live loop · 5 steps</span>
         <Link href="/walkthrough">Open the interactive walkthrough <b>↗</b></Link>
       </div>
     </section>

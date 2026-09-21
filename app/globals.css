@@ -1840,12 +1840,13 @@ h1, h2, h3 { text-wrap: balance; }
   border-radius: inherit;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);
 }
-.home-walkthrough-player video {
-  display: block;
+.home-walkthrough-player .walkthrough-cinema {
   width: 100%;
-  aspect-ratio: 59 / 36;
-  object-fit: cover;
-  background: #07100d;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
 }
 .home-walkthrough-footer {
   display: flex;
@@ -1894,7 +1895,7 @@ h1, h2, h3 { text-wrap: balance; }
 }
 .new-launches-heading {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 25px;
