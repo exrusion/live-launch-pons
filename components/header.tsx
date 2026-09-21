@@ -44,6 +44,7 @@ export function Header() {
       <Link href="/create" onClick={() => setMenu(false)}>Create</Link>
       <Link href="/dashboard" onClick={() => setMenu(false)}>My games</Link>
       <Link href="/how-it-works" onClick={() => setMenu(false)}>How it works</Link>
+      <Link href="/walkthrough" onClick={() => setMenu(false)}>Walkthrough</Link>
       {status !== "loading" && (verifiedX
         ? <button className="mobile-nav-auth" onClick={() => { setMenu(false); void signOut({ callbackUrl: "/" }); }}>Sign out @{session?.user?.xUsername || "creator"}</button>
         : <button className="mobile-nav-auth" disabled={xEnabled === null || (!xEnabled && !xError)} onClick={useX}>{xLabel}</button>)}
