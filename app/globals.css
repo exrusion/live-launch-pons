@@ -2195,3 +2195,24 @@ h1, h2, h3 { text-wrap: balance; }
   .x-signup-button { display: none; }
   .account-menu-popover { position: fixed; top: 68px; right: 12px; }
 }
+
+
+/* Stack the community roadmap into a clear vertical story. */
+.home-page .community-grid {
+  grid-template-columns: minmax(0, 920px);
+  justify-content: center;
+  gap: 24px;
+}
+.home-page .community-grid article {
+  width: 100%;
+  min-height: 210px;
+}
+@media (max-width: 740px) {
+  .home-page .community-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .home-page .community-grid article {
+    min-height: 190px;
+  }
+}
