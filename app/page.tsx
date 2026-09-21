@@ -23,7 +23,6 @@ export default async function HomePage() {
             <Link className="button button-primary" href="/create">Build a game <span>↗</span></Link>
             <Link className="button button-quiet" href="/explore">Explore games</Link>
           </div>
-          <div className="signup-note"><span>Wallet-owned publishing</span><p>Every version stays playable.</p></div>
         </div>
         <div className="hero-console">
           <PromptHero />

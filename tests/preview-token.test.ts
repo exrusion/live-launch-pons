@@ -57,8 +57,8 @@ test("preview token verifies the exact canonical parsed input and generated vers
 test("tampered preview tokens are rejected", () => {
   const { parsed, identity, token } = previewFor();
   const [prefix, payload, signature] = token.split(".");
-  const tamperedPayload = `${prefix}.${payload.slice(0, -1)}${payload.endsWith("A") ? "B" : "A"}.${signature}`;
-  const tamperedSignature = `${prefix}.${payload}.${signature.slice(0, -1)}${signature.endsWith("A") ? "B" : "A"}`;
+  const tamperedPayload = `${prefix}.${payload.startsWith("A") ? "B" : "A"}${payload.slice(1)}.${signature}`;
+  const tamperedSignature = `${prefix}.${payload}.${signature.startsWith("A") ? "B" : "A"}${signature.slice(1)}`;
   assert.equal(errorCode(() => verifyPreviewToken(tamperedPayload, parsed, identity, { now: ISSUED_AT + 1, secret: SECRET })), "INVALID");
   assert.equal(errorCode(() => verifyPreviewToken(tamperedSignature, parsed, identity, { now: ISSUED_AT + 1, secret: SECRET })), "INVALID");
   assert.equal(errorCode(() => verifyPreviewToken(token, parsed, identity, { now: ISSUED_AT + 1, secret: `${SECRET}-wrong` })), "INVALID");

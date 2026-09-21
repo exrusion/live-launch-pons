@@ -94,6 +94,10 @@ const palettes = [
   { background: "#080a18", primary: "#8cf3ff", accent: "#c7ff55", danger: "#ff5d8f", text: "#f5f7ff" },
   { background: "#13091d", primary: "#d58cff", accent: "#62ffbb", danger: "#ff6f61", text: "#fff8ff" },
   { background: "#160d08", primary: "#ffb25f", accent: "#86ffef", danger: "#ff5470", text: "#fff9f2" },
+  { background: "#071324", primary: "#4fd8ff", accent: "#ffd166", danger: "#ff4d6d", text: "#f5fbff" },
+  { background: "#171006", primary: "#ffcd57", accent: "#6fffe9", danger: "#ff5c5c", text: "#fffaf0" },
+  { background: "#120c1e", primary: "#ff78c8", accent: "#8dff70", danger: "#ff684f", text: "#fff6fd" },
+  { background: "#071714", primary: "#54f2c2", accent: "#b9ff66", danger: "#ff6262", text: "#f2fffb" },
 ];
 
 function words(prompt: string): string[] {
@@ -114,21 +118,21 @@ export function generateGameConfig(input: CreateGameInput): GameConfig {
   const speed = parsed.difficulty === "EASY" ? 0.84 : parsed.difficulty === "HARD" ? 1.22 : 1;
   const character = chooseLabel(
     prompt,
-    [[/mouse|mice/, "cyber mouse"], [/cat|kitten/, "arcade cat"], [/robot|android/, "mini robot"], [/frog/, "neon frog"], [/ship|pilot/, "star pilot"]],
+    [[/mouse|mice/, "cyber mouse"], [/cat|kitten/, "arcade cat"], [/robot|android/, "mini robot"], [/frog/, "neon frog"], [/dragon/, "sky dragon"], [/knight/, "star knight"], [/ninja/, "shadow ninja"], [/car|racer/, "turbo racer"], [/bird/, "storm bird"], [/witch|wizard|mage/, "arcane pilot"], [/ship|pilot/, "star pilot"]],
     parsed.category === "SHOOTER" ? "star pilot" : "pixel runner",
   );
   const obstacle = chooseLabel(
     prompt,
-    [[/drone/, "security drone"], [/cat/, "robotic cat"], [/meteor|asteroid/, "meteor"], [/laser/, "laser gate"], [/ghost/, "glitch ghost"]],
+    [[/drone/, "security drone"], [/cat/, "robotic cat"], [/meteor|asteroid/, "meteor"], [/laser/, "laser gate"], [/ghost/, "glitch ghost"], [/zombie/, "zombie swarm"], [/fire|lava/, "fire trap"], [/spike|thorn/, "spike trap"], [/monster|beast/, "roaming beast"]],
     parsed.category === "FLAPPY" ? "energy gate" : "glitch barrier",
   );
   const collectible = chooseLabel(
     prompt,
-    [[/neuron/, "neuron"], [/coin|gold/, "coin"], [/star/, "star"], [/crystal/, "crystal"], [/battery|energy/, "energy cell"]],
+    [[/neuron/, "neuron"], [/coin|gold/, "gold crest"], [/star/, "star fragment"], [/crystal|gem/, "crystal core"], [/battery|energy/, "energy cell"], [/fruit/, "sun fruit"], [/key/, "vault key"], [/cheese/, "moon cheese"], [/pearl/, "luminous pearl"]],
     "data shard",
   );
   const promptWords = words(prompt);
-  const place = promptWords.includes("mars") ? "Mars" : promptWords.includes("lab") || promptWords.includes("laboratory") ? "the neural lab" : promptWords.includes("space") ? "deep space" : "a shifting arcade world";
+  const place = promptWords.includes("mars") ? "Mars" : promptWords.includes("lab") || promptWords.includes("laboratory") ? "the neural lab" : promptWords.includes("space") ? "deep space" : promptWords.includes("jungle") || promptWords.includes("forest") ? "the living jungle" : promptWords.includes("city") || promptWords.includes("rooftop") ? "the midnight skyline" : promptWords.includes("ocean") || promptWords.includes("underwater") ? "the luminous deep" : promptWords.includes("castle") || promptWords.includes("dungeon") ? "the forgotten fortress" : promptWords.includes("desert") ? "the glass desert" : "a kinetic neon frontier";
   const worldPattern = /space|star|cosmic/i.test(`${prompt} ${parsed.visualStyle}`)
     ? "stars"
     : /lab|cyber|neon|circuit/i.test(`${prompt} ${parsed.visualStyle}`)
