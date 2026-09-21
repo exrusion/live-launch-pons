@@ -1,14 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { PromptHero } from "@/components/prompt-hero";
-import { GameFrame } from "@/components/game-frame";
 import { exploreGames } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const games = await exploreGames();
-  const featured = games[0];
+  const newLaunches = games.filter((game) => game.status === "LIVE").slice(0, 6);
 
   return <main className="home-page">
     <section className="hero-sky">
@@ -55,20 +54,26 @@ export default async function HomePage() {
       </div>
     </section>
 
-    {featured && <section className="featured-section"><div className="shell featured-grid">
-      <div className="featured-copy">
-        <span className="eyebrow">Playable now · {featured.status.toLowerCase()}</span>
-        <h2>{featured.name}</h2>
-        <p>{featured.description}</p>
-        <dl>
-          <div><dt>Engine</dt><dd>{featured.category.toLowerCase()}</dd></div>
-          <div><dt>Token</dt><dd>{featured.tokenAddress ? `$${featured.ticker}` : "Not launched"}</dd></div>
-          <div><dt>Build</dt><dd>Immutable v1</dd></div>
-        </dl>
-        <Link className="button button-quiet" href={`/game/${featured.tokenAddress || featured.slug}`}>Open full game page</Link>
+    <section className="new-launches-section shell" aria-labelledby="new-launches-title">
+      <div className="new-launches-heading">
+        <div><span className="eyebrow"><span className="live-dot" /> Fresh on Gamepad</span><h2 id="new-launches-title">New launches</h2></div>
+        <Link href="/explore">View all launches <span>↗</span></Link>
       </div>
-      <GameFrame title={featured.name} publicId={featured.tokenAddress || featured.slug} versionId={featured.versionId || "demo"} />
-    </div></section>}
+      {newLaunches.length ? <div className="new-launches-grid">
+        {newLaunches.map((game, index) => <Link className="new-launch-card" key={game.id} href={`/game/${game.tokenAddress || game.slug}`}>
+          <div className={`new-launch-art art-${game.category.toLowerCase()}`}>
+            {game.imageId ? <Image src={`/api/assets/${game.imageId}`} alt="" fill sizes="(max-width: 740px) 100vw, (max-width: 1100px) 50vw, 33vw" /> : <span>{game.ticker.slice(0, 2)}</span>}
+            <small>0{index + 1}</small>
+            <b><i /> Live</b>
+          </div>
+          <div className="new-launch-body">
+            <div><h3>{game.name}</h3><strong>${game.ticker}</strong></div>
+            <p>{game.description}</p>
+            <footer><span>{game.category.toLowerCase()}</span><span>{game.players} players</span><b>Play ↗</b></footer>
+          </div>
+        </Link>)}
+      </div> : <div className="new-launches-empty"><span>New launches will appear here automatically.</span><Link href="/create">Launch the first game ↗</Link></div>}
+    </section>
 
     <section className="product-section shell">
       <div className="section-intro">
