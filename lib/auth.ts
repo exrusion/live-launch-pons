@@ -138,6 +138,8 @@ export const authOptions: NextAuthOptions = {
                 client_id: clientId,
                 code_verifier: String(checks.code_verifier || ""),
               });
+              const brokerUrl = process.env.X_OAUTH_BROKER_URL?.trim();
+              const brokerSecret = process.env.X_OAUTH_BROKER_SECRET?.trim();
               const exchange = (authorization?: string) => fetch(X_OAUTH_TOKEN_URL, {
                 method: "POST",
                 headers: {
@@ -147,9 +149,24 @@ export const authOptions: NextAuthOptions = {
                 },
                 body,
               });
-              let response = await exchange(
-                `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
-              );
+              const usingBroker = Boolean(brokerUrl && brokerSecret);
+              let response = usingBroker
+                ? await fetch(brokerUrl!, {
+                    method: "POST",
+                    headers: {
+                      Accept: "application/json",
+                      Authorization: `Bearer ${brokerSecret}`,
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      code: String(params.code || ""),
+                      redirectUri: provider.callbackUrl,
+                      codeVerifier: String(checks.code_verifier || ""),
+                    }),
+                  })
+                : await exchange(
+                    `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+                  );
               let tokens = await response.json() as Record<string, unknown>;
               const firstCode = typeof tokens.error === "string" ? tokens.error : "";
               const firstDescription = typeof tokens.error_description === "string" ? tokens.error_description : "";
@@ -158,7 +175,8 @@ export const authOptions: NextAuthOptions = {
               // Native/SPA clients. Public clients authenticate the PKCE
               // exchange with client_id in the body and no Basic header.
               if (
-                response.status === 401
+                !usingBroker
+                && response.status === 401
                 && firstCode === "unauthorized_client"
                 && /authorization header/i.test(firstDescription)
               ) {
