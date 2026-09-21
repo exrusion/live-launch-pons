@@ -125,12 +125,34 @@ export const authOptions: NextAuthOptions = {
           clientId: process.env.X_CLIENT_ID!,
           clientSecret: process.env.X_CLIENT_SECRET!,
           version: "2.0",
-          client: {
-            // X web apps are confidential OAuth clients. The provider's v2
-            // token exchange must authenticate the client, otherwise X sends
-            // `unauthorized_client (Missing valid authorization header)` and
-            // NextAuth redirects the user back to the sign-in screen.
-            token_endpoint_auth_method: "client_secret_basic",
+          token: {
+            url: "https://api.twitter.com/2/oauth2/token",
+            async request({ params, checks, provider }) {
+              const clientId = process.env.X_CLIENT_ID!;
+              const clientSecret = process.env.X_CLIENT_SECRET!;
+              const body = new URLSearchParams({
+                grant_type: "authorization_code",
+                code: String(params.code || ""),
+                redirect_uri: provider.callbackUrl,
+                client_id: clientId,
+                code_verifier: String(checks.code_verifier || ""),
+              });
+              const response = await fetch("https://api.twitter.com/2/oauth2/token", {
+                method: "POST",
+                headers: {
+                  Accept: "application/json",
+                  Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body,
+              });
+              const tokens = await response.json() as Record<string, unknown>;
+              if (!response.ok) {
+                const code = typeof tokens.error === "string" ? tokens.error : "token_exchange_failed";
+                throw new Error(`X_OAUTH_TOKEN_ERROR:${code}`);
+              }
+              return { tokens };
+            },
           },
         }),
       ]
