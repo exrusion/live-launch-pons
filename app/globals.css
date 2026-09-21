@@ -1357,6 +1357,12 @@ h1, h2, h3 { text-wrap: balance; }
   background: #eef4ff;
   box-shadow: inset 0 0 0 1px rgba(50, 108, 255, .18);
 }
+.create-page .icon-sprint:before { content:""; position:absolute; width:25px; height:20px; border-radius:50% 50% 35% 35%; background:#326cff; left:2px; top:2px; transform:skewX(-15deg); }
+.create-page .icon-sprint:after { content:""; position:absolute; width:35px; height:15px; border-bottom:4px solid #ffc53d; border-right:4px solid #ffc53d; right:0; bottom:0; transform:skewX(-25deg); }
+.create-page .icon-flyer:before { content:""; position:absolute; width:34px; height:25px; background:#326cff; clip-path:polygon(0 50%,42% 0,100% 50%,42% 100%); left:0; top:6px; }
+.create-page .icon-flyer:after { content:""; position:absolute; width:7px; height:31px; border-radius:5px; background:#ffc53d; right:1px; top:3px; }
+.create-page .icon-arena:before { content:""; position:absolute; width:34px; height:34px; border:4px solid #326cff; border-radius:50%; left:0; top:0; }
+.create-page .icon-arena:after { content:""; position:absolute; width:12px; height:12px; border-radius:50%; background:#ffc53d; left:15px; top:11px; box-shadow:18px -7px 0 -3px #326cff; }
 .create-page .suffixed-input b { white-space: nowrap; }
 .create-page .field-grid.three { grid-template-columns: 1.1fr .78fr .82fr; }
 .create-page .prompt-assist {

@@ -14,10 +14,13 @@ import {
 } from "@/lib/create-draft-storage";
 import { GameFrame } from "@/components/game-frame";
 
-const categories = [
-  { value: "RUNNER", title: "Endless runner", copy: "Jump, dodge, and collect." },
-  { value: "FLAPPY", title: "Flappy-style", copy: "Tap through shifting gates." },
-  { value: "SHOOTER", title: "Top-down shooter", copy: "Move, aim, and survive." },
+const gameModes = [
+  { id: "endless-runner", category: "RUNNER", title: "Endless runner", copy: "Jump, dodge, and collect.", icon: "runner" },
+  { id: "rooftop-sprint", category: "RUNNER", title: "Rooftop sprint", copy: "Race across platforms and gaps.", icon: "sprint" },
+  { id: "flappy-style", category: "FLAPPY", title: "Flappy-style", copy: "Tap through shifting gates.", icon: "flappy" },
+  { id: "cave-flyer", category: "FLAPPY", title: "Cave flyer", copy: "Glide through tight moving tunnels.", icon: "flyer" },
+  { id: "top-down-shooter", category: "SHOOTER", title: "Top-down shooter", copy: "Move, aim, and survive.", icon: "shooter" },
+  { id: "arena-survival", category: "SHOOTER", title: "Arena survival", copy: "Clear waves and upgrade your attack.", icon: "arena" },
 ] as const;
 
 const promptIdeas = [
@@ -63,6 +66,7 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
   const [busy, setBusy] = useState(false);
   const [promptIdea, setPromptIdea] = useState("");
   const [promptBusy, setPromptBusy] = useState(false);
+  const [selectedMode, setSelectedMode] = useState("endless-runner");
   const [walletVerified, setWalletVerified] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -97,6 +101,7 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
         const draft = draftId ? await restoreCreateDraft(draftId) : null;
         if (cancelled || !draft || draftInteractionRef.current) return;
         setInput({ developerBuyEth: "0", xUrl: "", websiteUrl: "", ...draft.input });
+        setSelectedMode(gameModes.find((mode) => mode.category === draft.input.category)?.id || "endless-runner");
         setImageDataUrl(draft.imageDataUrl);
         setConfig(draft.config);
         setPreviewToken(draft.previewToken);
@@ -178,7 +183,13 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
       visualStyle: idea.style,
       difficulty: idea.difficulty,
     }));
+    setSelectedMode(gameModes.find((mode) => mode.category === idea.category)?.id || "endless-runner");
     invalidatePreview();
+  }
+
+  function chooseGameMode(mode: (typeof gameModes)[number]) {
+    setSelectedMode(mode.id);
+    update("category", mode.category);
   }
 
   function surpriseMe() {
@@ -359,7 +370,7 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
         <div className="prompt-idea-grid">{promptIdeas.map((idea) => <button key={idea.title} type="button" className={input.prompt === idea.prompt ? "prompt-idea selected" : "prompt-idea"} onClick={() => applyPromptIdea(idea)}><b>{idea.title}</b><small>{idea.category.toLowerCase()} · {idea.style}</small></button>)}</div>
         <div className="ai-prompt-writer"><div className="ai-prompt-title"><span>✦ AI prompt writer</span><small>Describe it roughly. AI will add the gameplay details.</small></div><div className="ai-prompt-controls"><input value={promptIdea} onChange={(event) => setPromptIdea(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void writePrompt(); } }} placeholder="e.g. a frog racing through a cyber city" maxLength={300} aria-label="Rough game idea" /><button type="button" onClick={() => void writePrompt()} disabled={promptBusy}>{promptBusy ? "Writing…" : "Generate prompt"}</button></div></div>
         <label><span>Your game idea</span><textarea className="prompt-textarea" value={input.prompt} onChange={(e) => update("prompt", e.target.value)} placeholder="Describe the hero, world, challenge and what the player collects…" maxLength={900} /><small>{input.prompt.length}/900</small></label>
-        <div className="choice-label">Choose how it plays</div><div className="category-grid">{categories.map((category) => <button key={category.value} className={input.category === category.value ? "category-card selected" : "category-card"} aria-pressed={input.category === category.value} onClick={() => update("category", category.value)}><span className={`category-icon icon-${category.value.toLowerCase()}`} /><b>{category.title}</b><small>{category.copy}</small></button>)}</div>
+        <div className="choice-label">Choose how it plays</div><div className="category-grid">{gameModes.map((mode) => <button key={mode.id} className={selectedMode === mode.id ? "category-card selected" : "category-card"} aria-pressed={selectedMode === mode.id} onClick={() => chooseGameMode(mode)}><span className={`category-icon icon-${mode.icon}`} /><b>{mode.title}</b><small>{mode.copy}</small></button>)}</div>
         <div className="field-grid three"><label><span>Visual style</span><select value={input.visualStyle} onChange={(e) => update("visualStyle", e.target.value)}><option>Neon arcade</option><option>Pixel noir</option><option>Bright cartoon</option><option>Retro terminal</option><option>Cosmic minimal</option></select></label><label><span>Difficulty</span><select value={input.difficulty} onChange={(e) => update("difficulty", e.target.value as CreateGameInput["difficulty"])}><option value="EASY">Easy</option><option value="NORMAL">Normal</option><option value="HARD">Hard</option></select></label><label><span>Developer buy</span><div className="suffixed-input"><input value="0" disabled aria-label="Developer buy is disabled in Phase 1" /><b>ETH</b></div><small>Disabled for Phase 1 safety</small></label></div>
         <div className="estimate-bar"><div><span>AI build</span><b>Ready in about 10–20 seconds</b></div><div><span>Launch price</span><b>Shown before wallet approval</b></div><div><span>Network</span><b>Robinhood Chain</b></div></div>
         <div className="form-footer"><button className="text-button" onClick={() => goToStep(1)}>← Back</button><button className="button button-primary" disabled={busy || imageReading} onClick={generate}>{busy ? "Building preview…" : imageReading ? "Processing image…" : "Generate playable preview ↗"}</button></div>
