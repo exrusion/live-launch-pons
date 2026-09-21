@@ -25,6 +25,10 @@ const promptIdeas = [
   { title: "Moon mouse", category: "FLAPPY", style: "Cosmic minimal", difficulty: "NORMAL", prompt: "A brave moon mouse pilots a pocket rocket through moving satellite gates, collects cheese stars, and avoids sleepy space drones." },
   { title: "Neon defender", category: "SHOOTER", style: "Arcade noir", difficulty: "HARD", prompt: "A neon guardian protects a midnight arcade from waves of corrupted bots, rescues lost pixels, and unlocks stronger energy weapons." },
   { title: "Jungle dash", category: "RUNNER", style: "Bright cartoon", difficulty: "NORMAL", prompt: "A cheerful explorer dashes through a living jungle temple, swings past traps, collects ancient fruit, and outruns a giant stone guardian." },
+  { title: "Deep-sea drift", category: "FLAPPY", style: "Cosmic minimal", difficulty: "EASY", prompt: "A tiny research submarine glides through glowing coral arches, gathers pearl signals, and avoids curious mechanical sea creatures in a calm midnight ocean." },
+  { title: "Meteor patrol", category: "SHOOTER", style: "Neon arcade", difficulty: "NORMAL", prompt: "A star ranger circles a fractured moon, blasts incoming meteors, rescues drifting satellites, and upgrades a pulse cannon between increasingly fast waves." },
+  { title: "Pixel heist", category: "RUNNER", style: "Pixel noir", difficulty: "HARD", prompt: "A masked pixel thief sprints across rainy rooftops, vaults security lasers, collects encrypted chips, and stays ahead of a relentless patrol drone." },
+  { title: "Garden glide", category: "FLAPPY", style: "Bright cartoon", difficulty: "NORMAL", prompt: "A bright hummingbird weaves through a giant clockwork garden, gathers golden pollen, avoids snapping flowers, and restores color to each new zone." },
 ] as const;
 
 function validOptionalUrl(value: string | undefined) {
@@ -57,6 +61,8 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
   const [previewToken, setPreviewToken] = useState("");
   const [previewHtml, setPreviewHtml] = useState("");
   const [busy, setBusy] = useState(false);
+  const [promptIdea, setPromptIdea] = useState("");
+  const [promptBusy, setPromptBusy] = useState(false);
   const [walletVerified, setWalletVerified] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -178,6 +184,32 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
   function surpriseMe() {
     const currentIndex = promptIdeas.findIndex((idea) => idea.prompt === input.prompt);
     applyPromptIdea(promptIdeas[(currentIndex + 1 + Math.floor(Math.random() * (promptIdeas.length - 1))) % promptIdeas.length]);
+  }
+
+  async function writePrompt() {
+    const idea = (promptIdea || input.prompt).trim();
+    if (idea.length < 3) {
+      setError("Add a few words about the game you want AI to create.");
+      return;
+    }
+    setPromptBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/generate/prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea, category: input.category, visualStyle: input.visualStyle, difficulty: input.difficulty }),
+      });
+      const body = await response.json();
+      if (!response.ok || typeof body.prompt !== "string") throw new Error(body.error || "AI could not write the prompt right now.");
+      update("prompt", body.prompt);
+      setPromptIdea("");
+      setNotice("AI prompt ready. Edit anything you want before generating the game.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "AI could not write the prompt right now.");
+    } finally {
+      setPromptBusy(false);
+    }
   }
 
   function goToStep(nextStep: number) {
@@ -323,8 +355,9 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
         <div className="form-footer"><span>Drafts stay private until an on-chain launch confirms.</span><button className="button button-primary" onClick={() => goToStep(2)}>Game direction →</button></div>
       </section>}
       {step === 2 && <section className="form-section"><div className="section-heading"><div><span>02</span><h2>Shape your game</h2></div><p>Start with an idea or let AI prepare one.</p></div>
-        <div className="prompt-assist"><div><span>AI prompt starters</span><p>Pick a ready-made concept. You can edit every word before generating.</p></div><button className="prompt-surprise" type="button" onClick={surpriseMe}>✦ Surprise me</button></div>
+        <div className="prompt-assist"><div><span>Game starters</span><p>Pick a ready-made concept, or ask AI to write one from your idea.</p></div><button className="prompt-surprise" type="button" onClick={surpriseMe}>✦ Surprise me</button></div>
         <div className="prompt-idea-grid">{promptIdeas.map((idea) => <button key={idea.title} type="button" className={input.prompt === idea.prompt ? "prompt-idea selected" : "prompt-idea"} onClick={() => applyPromptIdea(idea)}><b>{idea.title}</b><small>{idea.category.toLowerCase()} · {idea.style}</small></button>)}</div>
+        <div className="ai-prompt-writer"><div className="ai-prompt-title"><span>✦ AI prompt writer</span><small>Describe it roughly. AI will add the gameplay details.</small></div><div className="ai-prompt-controls"><input value={promptIdea} onChange={(event) => setPromptIdea(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void writePrompt(); } }} placeholder="e.g. a frog racing through a cyber city" maxLength={300} aria-label="Rough game idea" /><button type="button" onClick={() => void writePrompt()} disabled={promptBusy}>{promptBusy ? "Writing…" : "Generate prompt"}</button></div></div>
         <label><span>Your game idea</span><textarea className="prompt-textarea" value={input.prompt} onChange={(e) => update("prompt", e.target.value)} placeholder="Describe the hero, world, challenge and what the player collects…" maxLength={900} /><small>{input.prompt.length}/900</small></label>
         <div className="choice-label">Choose how it plays</div><div className="category-grid">{categories.map((category) => <button key={category.value} className={input.category === category.value ? "category-card selected" : "category-card"} aria-pressed={input.category === category.value} onClick={() => update("category", category.value)}><span className={`category-icon icon-${category.value.toLowerCase()}`} /><b>{category.title}</b><small>{category.copy}</small></button>)}</div>
         <div className="field-grid three"><label><span>Visual style</span><select value={input.visualStyle} onChange={(e) => update("visualStyle", e.target.value)}><option>Neon arcade</option><option>Pixel noir</option><option>Bright cartoon</option><option>Retro terminal</option><option>Cosmic minimal</option></select></label><label><span>Difficulty</span><select value={input.difficulty} onChange={(e) => update("difficulty", e.target.value as CreateGameInput["difficulty"])}><option value="EASY">Easy</option><option value="NORMAL">Normal</option><option value="HARD">Hard</option></select></label><label><span>Developer buy</span><div className="suffixed-input"><input value="0" disabled aria-label="Developer buy is disabled in Phase 1" /><b>ETH</b></div><small>Disabled for Phase 1 safety</small></label></div>

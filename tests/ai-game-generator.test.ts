@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateGameConfigWithAi, type AiProviderConfig } from "@/lib/ai-game-generator";
+import { generateGameConfigWithAi, generatePromptWithAi, type AiProviderConfig } from "@/lib/ai-game-generator";
 
 const input = {
   name: "Neon Burrow",
@@ -60,6 +60,22 @@ function completion(value: unknown, model = config.model) {
     choices: [{ message: { content: typeof value === "string" ? value : JSON.stringify(value) } }],
   }), { status: 200, headers: { "Content-Type": "application/json" } });
 }
+
+test("AI prompt writer returns a moderated editable game prompt", async () => {
+  const result = await generatePromptWithAi("a frog in a cyber city", {
+    category: "RUNNER",
+    visualStyle: "Neon arcade",
+    difficulty: "NORMAL",
+  }, {
+    config,
+    fetchImpl: async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      assert.equal(body.messages[1].content.includes("a frog in a cyber city"), true);
+      return completion({ prompt: "A quick cyber frog races across glowing rooftops, leaps over patrol drones, collects battery flies, and unlocks faster districts as the city wakes up." });
+    },
+  });
+  assert.match(result, /cyber frog/);
+});
 
 test("an OpenAI-compatible provider produces a strict blueprint without exposing the API key", async () => {
   let requestUrl = "";
