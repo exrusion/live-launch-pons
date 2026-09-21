@@ -2216,3 +2216,85 @@ h1, h2, h3 { text-wrap: balance; }
     min-height: 190px;
   }
 }
+
+
+/* Hero hierarchy: headline first, supporting copy second, scenery kept softly behind it. */
+.home-page .hero-sky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(239, 248, 255, .18);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+.home-page .hero-sky .hero {
+  min-height: 760px;
+  padding-top: clamp(78px, 8vw, 116px);
+  padding-bottom: 42px;
+  justify-content: flex-start;
+  gap: 22px;
+}
+.home-page .hero-sky .hero-copy {
+  position: relative;
+  z-index: 2;
+}
+.home-page .hero-sky .hero h1 {
+  max-width: 1080px;
+  margin: 28px 0 18px;
+  font-size: clamp(72px, 7.4vw, 108px);
+  line-height: .82;
+  letter-spacing: -.052em;
+}
+.home-page .hero-sky .hero-copy > p {
+  max-width: 700px;
+  margin: 0 auto;
+  font-size: clamp(14px, 1.2vw, 17px);
+  line-height: 1.48;
+}
+.home-page .hero-character {
+  z-index: 0;
+  top: 170px;
+  opacity: .48;
+  filter: blur(3px) saturate(.78) drop-shadow(0 18px 24px rgba(46, 93, 153, .12));
+}
+.home-page .hero-character-left {
+  left: 3%;
+  width: clamp(170px, 18vw, 265px);
+}
+.home-page .hero-character-right {
+  top: 184px;
+  right: 4%;
+  width: clamp(155px, 16vw, 235px);
+}
+.home-page .hero-sky .hero-console {
+  position: relative;
+  z-index: 2;
+}
+@media (max-width: 740px) {
+  .home-page .hero-sky .hero {
+    min-height: 700px;
+    padding-top: 58px;
+    gap: 18px;
+  }
+  .home-page .hero-sky .hero h1 {
+    max-width: 560px;
+    margin: 20px 0 14px;
+    font-size: clamp(54px, 16vw, 72px);
+    line-height: .84;
+  }
+  .home-page .hero-sky .hero-copy > p {
+    max-width: 440px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .home-page .hero-character {
+    top: 175px;
+    width: 130px;
+    opacity: .34;
+    filter: blur(4px) saturate(.72);
+  }
+  .home-page .hero-character-left { left: -58px; }
+  .home-page .hero-character-right { top: 190px; right: -58px; }
+}
