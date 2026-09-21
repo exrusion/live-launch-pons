@@ -2298,3 +2298,232 @@ h1, h2, h3 { text-wrap: balance; }
   .home-page .hero-character-left { left: -58px; }
   .home-page .hero-character-right { top: 190px; right: -58px; }
 }
+
+
+/* Portrait roadmap cards: vertical stories, never stretched horizontal banners. */
+.home-page .community-grid {
+  grid-template-columns: repeat(2, minmax(280px, 410px));
+  justify-content: center;
+  align-items: stretch;
+  gap: clamp(22px, 3vw, 38px);
+}
+.home-page .community-grid article {
+  width: 100%;
+  min-height: 500px;
+  padding: clamp(28px, 3vw, 42px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background: rgba(255, 255, 255, .58);
+  border: 1px solid rgba(55, 104, 177, .12);
+  box-shadow: 0 30px 70px rgba(55, 104, 177, .10);
+  backdrop-filter: blur(14px);
+}
+.home-page .community-grid article h3 {
+  max-width: 9ch;
+  margin-top: 42px;
+  font-size: clamp(40px, 4vw, 58px);
+  line-height: .98;
+}
+.home-page .community-grid article > p {
+  max-width: 34ch;
+}
+.home-page .community-grid article > small,
+.home-page .community-grid article .phase-note {
+  margin-top: auto;
+}
+@media (max-width: 760px) {
+  .home-page .community-grid {
+    grid-template-columns: minmax(0, 390px);
+  }
+  .home-page .community-grid article {
+    min-height: 440px;
+  }
+}
+
+/* The mascots sit behind the content like translucent floating scenery. */
+.home-page .hero-sky::before {
+  background: rgba(239, 248, 255, .14);
+  backdrop-filter: blur(1.5px);
+}
+.home-page .hero-character {
+  opacity: .56;
+  filter: saturate(.88) contrast(.96) drop-shadow(0 26px 34px rgba(42, 104, 183, .16));
+  animation: mascot-float 7s ease-in-out infinite;
+}
+.home-page .hero-character-left {
+  width: clamp(190px, 20vw, 285px);
+}
+.home-page .hero-character-right {
+  width: clamp(175px, 18vw, 255px);
+  animation-delay: -3.2s;
+}
+@keyframes mascot-float {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-1deg); }
+  50% { transform: translate3d(0, -16px, 0) rotate(1.5deg); }
+}
+@media (max-width: 760px) {
+  .home-page .hero-character { opacity: .30; }
+}
+
+/* Walkthrough */
+.walkthrough-page {
+  overflow: hidden;
+  min-height: 100vh;
+  color: #0c1729;
+  background:
+    radial-gradient(circle at 15% 18%, rgba(91, 221, 255, .24), transparent 28rem),
+    radial-gradient(circle at 86% 48%, rgba(111, 145, 255, .22), transparent 31rem),
+    #eef7ff;
+}
+.walkthrough-hero {
+  padding: clamp(92px, 12vw, 150px) 0 clamp(70px, 9vw, 112px);
+  text-align: center;
+}
+.walkthrough-hero h1 {
+  max-width: 930px;
+  margin: 24px auto 22px;
+  font-family: var(--font-display, Georgia), Georgia, serif;
+  font-size: clamp(58px, 8vw, 110px);
+  line-height: .91;
+  letter-spacing: -.055em;
+  font-weight: 500;
+}
+.walkthrough-hero h1 span { color: #316cff; }
+.walkthrough-hero > p {
+  max-width: 670px;
+  margin: 0 auto;
+  color: #65738c;
+  font-size: clamp(16px, 2vw, 21px);
+}
+.walkthrough-flow {
+  width: min(1040px, calc(100% - 40px));
+  margin: 0 auto;
+  padding-bottom: 130px;
+  position: relative;
+}
+.walkthrough-flow::before {
+  content: "";
+  position: absolute;
+  top: 36px;
+  bottom: 170px;
+  left: 50%;
+  width: 2px;
+  background: linear-gradient(#316cff, rgba(49,108,255,.08));
+  transform: translateX(-50%);
+}
+.walkthrough-step {
+  width: min(455px, 46%);
+  min-height: 430px;
+  margin-bottom: 84px;
+  padding: 32px;
+  border-radius: 34px;
+  background: rgba(255,255,255,.68);
+  border: 1px solid rgba(49,108,255,.14);
+  box-shadow: 0 28px 70px rgba(44,91,164,.12);
+  backdrop-filter: blur(16px);
+  position: relative;
+  animation: walkthrough-drift 6s ease-in-out infinite;
+}
+.walkthrough-step:nth-child(even) { margin-left: auto; animation-delay: -3s; }
+.walkthrough-step::after {
+  content: "";
+  position: absolute;
+  top: 52px;
+  width: 18px;
+  height: 18px;
+  border: 5px solid #eef7ff;
+  border-radius: 50%;
+  background: #316cff;
+  box-shadow: 0 0 0 8px rgba(49,108,255,.12);
+}
+.walkthrough-step:nth-child(odd)::after { right: -65px; }
+.walkthrough-step:nth-child(even)::after { left: -65px; }
+.walkthrough-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  color: white;
+  background: #316cff;
+  font-weight: 900;
+}
+.walkthrough-step h2 {
+  margin: 64px 0 14px;
+  font-family: var(--font-display, Georgia), Georgia, serif;
+  font-size: clamp(38px, 4vw, 54px);
+  line-height: .98;
+  font-weight: 500;
+  letter-spacing: -.045em;
+}
+.walkthrough-step p { color: #65738c; font-size: 16px; }
+.walkthrough-visual {
+  height: 116px;
+  margin-top: 34px;
+  border-radius: 22px;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(135deg, #091326, #132957);
+}
+.walkthrough-visual::before {
+  content: "";
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  top: 32px;
+  left: 28px;
+  border-radius: 18px;
+  background: #36d9f3;
+  animation: walkthrough-play 3.6s ease-in-out infinite;
+}
+.walkthrough-visual::after {
+  content: "";
+  position: absolute;
+  left: 104px;
+  right: 28px;
+  top: 38px;
+  height: 10px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #316cff 55%, rgba(255,255,255,.14) 55%);
+  box-shadow: 0 25px 0 rgba(255,255,255,.16);
+}
+.walkthrough-cta {
+  padding: 54px;
+  border-radius: 38px;
+  text-align: center;
+  background: #0c1729;
+  color: white;
+}
+.walkthrough-cta h2 {
+  margin: 0 0 24px;
+  font-family: var(--font-display, Georgia), Georgia, serif;
+  font-size: clamp(42px, 6vw, 72px);
+  font-weight: 500;
+  letter-spacing: -.045em;
+}
+.walkthrough-cta .button { margin: 6px; }
+@keyframes walkthrough-drift {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+@keyframes walkthrough-play {
+  0%,100% { transform: translateX(0) rotate(0); }
+  50% { transform: translateX(38px) rotate(8deg); }
+}
+@media (max-width: 760px) {
+  .walkthrough-flow::before { left: 20px; }
+  .walkthrough-step, .walkthrough-step:nth-child(even) {
+    width: calc(100% - 44px);
+    margin-left: 44px;
+    min-height: 390px;
+  }
+  .walkthrough-step:nth-child(odd)::after,
+  .walkthrough-step:nth-child(even)::after { left: -42px; right: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-page .hero-character,
+  .walkthrough-step,
+  .walkthrough-visual::before { animation: none !important; }
+}
