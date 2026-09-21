@@ -1682,7 +1682,7 @@ h1, h2, h3 { text-wrap: balance; }
 .home-page {
   background-attachment: fixed;
 }
-.home-page .market-pulse-section {
+.home-page .home-walkthrough-section {
   padding-block: clamp(88px, 9vw, 138px);
 }
 .home-page .featured-section {
@@ -1754,7 +1754,7 @@ h1, h2, h3 { text-wrap: balance; }
 }
 
 @supports (animation-timeline: view()) {
-  .home-page .market-pulse-section,
+  .home-page .home-walkthrough-section,
   .home-page .featured-grid,
   .home-page .product-section,
   .home-page .community-section,
@@ -1770,7 +1770,7 @@ h1, h2, h3 { text-wrap: balance; }
 }
 
 @media (max-width: 740px) {
-  .home-page .market-pulse-section { padding-block: 64px; }
+  .home-page .home-walkthrough-section { padding-block: 64px; }
   .home-page .featured-section { padding-block: 52px; }
   .home-page .product-section { padding-block: 72px 46px; }
   .home-page .community-section { margin-top: 72px; padding-block: 46px 64px; }
@@ -1780,11 +1780,112 @@ h1, h2, h3 { text-wrap: balance; }
 
 @media (prefers-reduced-motion: reduce) {
   .home-page .feature-card::before,
-  .home-page .market-pulse-section,
+  .home-page .home-walkthrough-section,
   .home-page .featured-grid,
   .home-page .product-section,
   .home-page .community-section,
   .home-page .final-cta { animation: none; }
+}
+
+/* Homepage walkthrough: the full product story, playing in place of the old activity panel. */
+.home-walkthrough-section {
+  width: min(1180px, calc(100% - 40px));
+}
+.home-walkthrough-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+  gap: clamp(28px, 6vw, 92px);
+  align-items: end;
+  margin-bottom: clamp(24px, 3vw, 38px);
+}
+.home-walkthrough-heading .eyebrow {
+  color: #2865dc;
+}
+.home-walkthrough-heading .live-dot {
+  background: #2f6bff;
+  box-shadow: 0 0 0 5px rgba(47,107,255,.1);
+}
+.home-walkthrough-heading h2 {
+  max-width: 760px;
+  margin: 14px 0 0;
+  color: #0d1729;
+  font-family: "Manrope", "Inter Variable", Inter, system-ui, sans-serif;
+  font-size: clamp(38px, 5.2vw, 72px);
+  font-weight: 650;
+  line-height: .98;
+  letter-spacing: -.055em;
+}
+.home-walkthrough-heading > p {
+  max-width: 470px;
+  margin: 0 0 6px;
+  color: #5c6d83;
+  font-family: "Manrope", "Inter Variable", Inter, system-ui, sans-serif;
+  font-size: clamp(15px, 1.5vw, 19px);
+  line-height: 1.55;
+}
+.home-walkthrough-player {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(64, 103, 155, .22);
+  border-radius: 32px;
+  background: #07100d;
+  box-shadow: 0 32px 90px rgba(31, 67, 112, .2), 0 2px 0 rgba(255,255,255,.8) inset;
+}
+.home-walkthrough-player::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.07);
+}
+.home-walkthrough-player video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 59 / 36;
+  object-fit: cover;
+  background: #07100d;
+}
+.home-walkthrough-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 17px 4px 0;
+  color: #607087;
+  font-family: "Manrope", "Inter Variable", Inter, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 650;
+}
+.home-walkthrough-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+}
+.home-walkthrough-footer span i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2f6bff;
+  box-shadow: 0 0 0 5px rgba(47,107,255,.1);
+}
+.home-walkthrough-footer a {
+  color: #0d1729;
+  text-decoration: none;
+}
+.home-walkthrough-footer a:hover { color: #2166e5; }
+.home-walkthrough-footer b { margin-left: 4px; }
+
+@media (max-width: 740px) {
+  .home-walkthrough-section { width: min(100% - 24px, 560px); }
+  .home-walkthrough-heading { grid-template-columns: 1fr; gap: 15px; margin-bottom: 20px; }
+  .home-walkthrough-heading h2 { font-size: clamp(36px, 11.2vw, 52px); }
+  .home-walkthrough-heading > p { font-size: 15px; }
+  .home-walkthrough-player { border-radius: 20px; }
+  .home-walkthrough-footer { align-items: flex-start; flex-direction: column; padding-top: 14px; }
 }
 
 /* A clearer, upright Build → Launch → Compete journey. */
