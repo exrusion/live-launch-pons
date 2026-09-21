@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import type { CreateGameInput, GameConfig } from "@/lib/types";
 import {
   clearCreateDraft,
@@ -49,7 +49,7 @@ function validateGameInput(input: CreateGameInput): { message: string; step: 1 |
 
 export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?: string; cspNonce: string }) {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { isConnected } = useAccount();
   const [input, setInput] = useState<CreateGameInput>({ name: "", ticker: "", description: "", prompt: initialPrompt, category: "RUNNER", visualStyle: "Neon arcade", difficulty: "NORMAL", developerBuyEth: "0", xUrl: "", websiteUrl: "" });
   const [imageDataUrl, setImageDataUrl] = useState("");
   const [imageReading, setImageReading] = useState(false);
@@ -57,7 +57,7 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
   const [previewToken, setPreviewToken] = useState("");
   const [previewHtml, setPreviewHtml] = useState("");
   const [busy, setBusy] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
+  const [walletVerified, setWalletVerified] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [restoreNotice, setRestoreNotice] = useState("");
@@ -134,6 +134,19 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
     imageReadRevisionRef.current += 1;
     imageReaderRef.current?.abort();
   }, []);
+
+  useEffect(() => {
+    const handleWalletVerified = () => {
+      setWalletVerified(true);
+      setError("");
+    };
+    window.addEventListener("gamepad:wallet-verified", handleWalletVerified);
+    return () => window.removeEventListener("gamepad:wallet-verified", handleWalletVerified);
+  }, []);
+
+  useEffect(() => {
+    if (!isConnected) setWalletVerified(false);
+  }, [isConnected]);
 
   function invalidatePreview() {
     generationRevisionRef.current += 1;
@@ -252,39 +265,25 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
   }
 
   async function saveDraft() {
-    if (status === "loading" || authBusy) return;
     if (imageReading) { setError("Wait for the token image to finish processing."); return; }
     if (!config || !previewToken || !previewHtml) { setError("Generate a fresh playable preview before saving."); setStep(2); return; }
     if (!imageDataUrl) { setError("Add a token image before saving the launch draft."); setStep(1); return; }
-    if (status !== "authenticated" || !session?.user?.xId) {
-      const draftId = draftIdRef.current || getOrCreateTabDraftId();
-      if (!draftId) {
-        setError("Browser storage is required to preserve this draft during X sign-up.");
-        return;
-      }
-      draftIdRef.current = draftId;
-      if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current);
-      setAuthBusy(true);
-      setError("");
-      try {
-        const committed = await enqueueStorageOperation(() => persistCreateDraft(draftId, draftPayload()));
-        if (!committed.localStorage) {
-          setError("Your draft could not be preserved for the X sign-up round trip. Free some browser storage and try again.");
-          return;
-        }
-        await signIn("twitter", { callbackUrl: "/create" });
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Could not open X sign-up.");
-      } finally {
-        setAuthBusy(false);
-      }
+    if (!isConnected) {
+      setError("Connect and verify a wallet to save this playable version.");
+      window.dispatchEvent(new Event("gamepad:open-wallet"));
       return;
     }
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/games", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ input, config, imageDataUrl, previewToken }) });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || "Could not save draft");
+      if (!response.ok) {
+        if (body.code === "WALLET_REQUIRED" || body.code === "CREATOR_SESSION_REQUIRED") {
+          setWalletVerified(false);
+          window.dispatchEvent(new Event("gamepad:open-wallet"));
+        }
+        throw new Error(body.error || "Could not save draft");
+      }
       draftClearedRef.current = true;
       if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current);
       const draftId = draftIdRef.current;
@@ -335,7 +334,7 @@ export function CreateStudio({ initialPrompt = "", cspNonce }: { initialPrompt?:
       {step === 3 && <section className="preview-section"><div className="section-heading"><div><span>03</span><h2>Test the build</h2></div><p>Nothing is on-chain yet.</p></div>
         {config && previewHtml ? <><GameFrame title={config.title} previewHtml={previewHtml} cspNonce={cspNonce} /><div className="preview-meta"><div><span>Engine</span><b>{config.category.toLowerCase()}</b></div><div><span>Difficulty</span><b>{config.difficulty.toLowerCase()}</b></div><div><span>Generation</span><b>{config.generation?.mode === "ai" ? `AI · ${config.generation.model}` : config.generation?.mode === "fallback" ? "safe fallback" : "template"}</b></div><div><span>Runtime</span><b>v3 · sandboxed</b></div></div></> : <div className="empty-preview"><span>◫</span><h3>No preview yet</h3><p>Describe the game and generate its first build.</p><button className="button button-quiet" onClick={() => goToStep(2)}>Go to game direction</button></div>}
         {notice && <p className="success-copy" role="status">{notice}</p>}{error && <p className="error-copy" role="alert">{error}</p>}
-        <div className="launch-review"><div><h3>Ready to keep this version?</h3><p>{status === "authenticated" && session?.user?.xId ? "Save this playable version, then connect your wallet when you are ready to launch." : "Continue with X to save your draft and unlock your one-time launch credit. Your work stays here during sign-up."}</p></div><div className="review-actions"><button className="button button-quiet" disabled={busy || authBusy || imageReading} onClick={generate}>Regenerate</button><button className="button button-primary" disabled={!config || !previewToken || !previewHtml || busy || authBusy || imageReading || status === "loading"} onClick={saveDraft}>{imageReading ? "Processing image…" : status === "loading" ? "Checking X…" : status === "authenticated" && session?.user?.xId ? busy ? "Saving…" : "Save draft & continue" : authBusy ? "Opening X…" : "Continue with X to save"}</button></div></div>
+        <div className="launch-review"><div><h3>Ready to keep this version?</h3><p>Connect and verify a wallet to save this playable version. X is optional and only used for the one free launch-fee credit.</p></div><div className="review-actions"><button className="button button-quiet" disabled={busy || imageReading} onClick={generate}>Regenerate</button><button className="button button-primary" disabled={!config || !previewToken || !previewHtml || busy || imageReading} onClick={saveDraft}>{imageReading ? "Processing image…" : busy ? "Saving…" : !isConnected ? "Connect wallet" : walletVerified ? "Save draft & continue" : "Verify wallet & save"}</button></div></div>
       </section>}
       {error && step !== 3 && <p className="error-copy form-error" role="alert">{error}</p>}
     </section>

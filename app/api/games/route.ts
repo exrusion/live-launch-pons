@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 import { createGameSchema, freezeGameVersion, generateGameConfig, validateGameConfigForInput } from "@/lib/game-generator";
 import { previewInputHash, PreviewTokenConfigurationError, PreviewTokenError, verifyPreviewToken } from "@/lib/preview-token";
 import { hashIp, requestIp, requireSameOrigin, sha256, slugify } from "@/lib/security";
-import { transaction } from "@/lib/db";
+import { query, transaction } from "@/lib/db";
 import { saveTokenImage } from "@/lib/assets";
 import { checkRateLimit } from "@/lib/rate-limit";
 import type { GameGenerationMetadata } from "@/lib/types";
@@ -31,13 +31,25 @@ export async function POST(request: NextRequest) {
   try {
     requireSameOrigin(request);
     const session = await auth();
-    if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
+    if (!session?.user?.id || session.user.accountStatus !== "ACTIVE") {
       return NextResponse.json(
-        { error: "Continue with X to save this playable version.", code: "X_AUTH_REQUIRED" },
+        { error: "Connect and verify a wallet to save this playable version.", code: "CREATOR_SESSION_REQUIRED" },
         { status: 401 },
       );
     }
     const userId = session.user.id;
+    const verifiedWallet = await query<{ id: string }>(
+      `SELECT id FROM wallets
+       WHERE user_id=$1 AND chain_id=4663 AND verified_at IS NOT NULL
+       LIMIT 1`,
+      [userId],
+    );
+    if (!verifiedWallet.rows[0]) {
+      return NextResponse.json(
+        { error: "Connect and verify a wallet to save this playable version.", code: "WALLET_REQUIRED" },
+        { status: 401 },
+      );
+    }
     const rate = await checkRateLimit(`create:${userId}:${hashIp(requestIp(request.headers))}`, 8, 60 * 60);
     if (!rate.allowed) return NextResponse.json({ error: "Creation limit reached. Try again later." }, { status: 429 });
     let rawBody: unknown;
@@ -85,7 +97,7 @@ export async function POST(request: NextRequest) {
       const gameId = game.rows[0].id;
       const imageId = await saveTokenImage(client, { userId, gameId, dataUrl: imageDataUrl });
       // The signed preview token binds this job ID through the frozen config hash.
-      // Claim it for the verified X user so an anonymous pre-login preview survives OAuth.
+      // Claim the anonymous preview for the wallet-verified creator.
       const job = generation.jobId
         ? await client.query<{ id: string }>(
             `UPDATE generation_jobs SET game_id=$2,user_id=$3,updated_at=now()

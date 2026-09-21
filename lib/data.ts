@@ -131,9 +131,11 @@ export async function creatorGames(userId: string) {
 export async function freeLaunchStatus(userId: string) {
   if (!hasDatabase()) return null;
   const result = await query(
-    `SELECT f.*,x.username,w.address AS primary_wallet FROM free_launch_credits f
-     JOIN x_accounts x ON x.id=f.x_account_id LEFT JOIN wallets w ON w.user_id=f.user_id AND w.is_primary=true
-     WHERE f.user_id=$1 LIMIT 1`,
+    `SELECT f.*,x.username,w.address AS primary_wallet FROM users u
+     LEFT JOIN free_launch_credits f ON f.user_id=u.id
+     LEFT JOIN x_accounts x ON x.id=f.x_account_id
+     LEFT JOIN wallets w ON w.user_id=u.id AND w.is_primary=true AND w.verified_at IS NOT NULL
+     WHERE u.id=$1 LIMIT 1`,
     [userId],
   );
   return result.rows[0] || null;

@@ -12,8 +12,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     requireSameOrigin(request);
     const session = await auth();
-    if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
-      return NextResponse.json({ error: "Continue with X before launching.", code: "X_AUTH_REQUIRED" }, { status: 401 });
+    if (!session?.user?.id || session.user.accountStatus !== "ACTIVE") {
+      return NextResponse.json({ error: "Connect and verify a wallet before launching.", code: "CREATOR_SESSION_REQUIRED" }, { status: 401 });
     }
     const { id } = await context.params;
     const body = await request.json();

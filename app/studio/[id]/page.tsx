@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 export default async function StudioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
-  if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
-    redirect(`/auth/signin?callbackUrl=${encodeURIComponent(`/studio/${id}`)}`);
+  if (!session?.user?.id || session.user.accountStatus !== "ACTIVE") {
+    redirect("/create");
   }
   const result = await query(
     `SELECT g.*,v.id AS version_id,v.deterministic_id,v.version_number,v.config,v.config_hash,v.manifest_hash,

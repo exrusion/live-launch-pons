@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAddress, isAddress } from "viem";
-import { auth } from "@/lib/auth";
+import { attachCreatorCookie, ensureCreator } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { makeNonce, requireSameOrigin, safeError, sha256 } from "@/lib/security";
 
 export async function POST(request: NextRequest) {
   try {
     requireSameOrigin(request);
-    const session = await auth();
-    if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
-      return NextResponse.json(
-        { error: "Continue with X before verifying a launch wallet.", code: "X_AUTH_REQUIRED" },
-        { status: 401 },
-      );
-    }
     const body = await request.json();
     if (!isAddress(body.address)) return NextResponse.json({ error: "Invalid wallet address." }, { status: 400 });
+    const creator = await ensureCreator(request);
+    const session = creator.session;
     const address = getAddress(body.address);
     const nonce = makeNonce(18);
     const domain = request.nextUrl.host;
@@ -27,7 +22,10 @@ export async function POST(request: NextRequest) {
       "INSERT INTO wallet_nonces(user_id,address_normalized,nonce_hash,domain,message,expires_at) VALUES($1,$2,$3,$4,$5,$6)",
       [session.user.id, address.toLowerCase(), sha256(nonce), domain, message, expiresAt],
     );
-    return NextResponse.json({ message, expiresAt: expiresAt.toISOString() }, { headers: { "Cache-Control": "no-store" } });
+    return attachCreatorCookie(
+      NextResponse.json({ message, expiresAt: expiresAt.toISOString() }, { headers: { "Cache-Control": "no-store" } }),
+      creator.cookie,
+    );
   } catch (error) {
     return NextResponse.json({ error: safeError(error) }, { status: 400 });
   }

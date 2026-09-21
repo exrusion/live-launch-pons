@@ -15,8 +15,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     requireSameOrigin(request);
     if (process.env.PONS_LAUNCH_ENABLED !== "true") return NextResponse.json({ error: "Live pons launching is paused." }, { status: 503 });
     const session = await auth();
-    if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
-      return NextResponse.json({ error: "Continue with X before launching.", code: "X_AUTH_REQUIRED" }, { status: 401 });
+    if (!session?.user?.id || session.user.accountStatus !== "ACTIVE") {
+      return NextResponse.json({ error: "Connect and verify a wallet before launching.", code: "CREATOR_SESSION_REQUIRED" }, { status: 401 });
     }
     const { id: gameId } = await context.params;
     const body = await request.json();
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
           (SELECT a.id FROM assets a WHERE a.game_id=g.id AND a.kind='TOKEN_IMAGE' AND a.immutable=true ORDER BY a.created_at DESC LIMIT 1) AS image_id,
           w.id AS wallet_id,f.id AS credit_id,f.status AS credit_status
          FROM games g JOIN game_versions v ON v.id=g.current_version_id
-         JOIN wallets w ON w.user_id=g.owner_user_id AND w.address_normalized=$3 AND w.chain_id=4663
+         JOIN wallets w ON w.user_id=g.owner_user_id AND w.address_normalized=$3 AND w.chain_id=4663 AND w.verified_at IS NOT NULL
          LEFT JOIN free_launch_credits f ON f.user_id=g.owner_user_id
          WHERE g.id=$1 AND g.owner_user_id=$2 LIMIT 1`,
         [gameId, session.user!.id, wallet.toLowerCase()],

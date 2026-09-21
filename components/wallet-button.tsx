@@ -68,6 +68,15 @@ export function WalletButton() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [open]);
 
+  useEffect(() => {
+    function openWallet() {
+      setError("");
+      setOpen(true);
+    }
+    window.addEventListener("gamepad:open-wallet", openWallet);
+    return () => window.removeEventListener("gamepad:open-wallet", openWallet);
+  }, []);
+
   const walletBackdrop = open && typeof document !== "undefined"
     ? createPortal(<div className="wallet-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />, document.body)
     : null;
@@ -85,6 +94,7 @@ export function WalletButton() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || "Wallet verification failed");
       setVerified(true); setOpen(false);
+      window.dispatchEvent(new Event("gamepad:wallet-verified"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Wallet verification failed");
     } finally { setBusy(false); }

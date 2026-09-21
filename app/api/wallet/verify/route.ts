@@ -8,9 +8,9 @@ export async function POST(request: NextRequest) {
   try {
     requireSameOrigin(request);
     const session = await auth();
-    if (!session?.user?.id || !session.user.xId || session.user.accountStatus !== "ACTIVE") {
+    if (!session?.user?.id || session.user.accountStatus !== "ACTIVE") {
       return NextResponse.json(
-        { error: "Continue with X before verifying a launch wallet.", code: "X_AUTH_REQUIRED" },
+        { error: "Start wallet verification again.", code: "CREATOR_SESSION_REQUIRED" },
         { status: 401 },
       );
     }
